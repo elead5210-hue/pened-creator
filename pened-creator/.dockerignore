@@ -1,0 +1,57 @@
+# Files and directories excluded from the Docker build context, so secrets and
+# local build output never end up in the image, and builds stay fast.
+
+# Dependencies: installed fresh inside the image by `npm ci`
+node_modules
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment files: never bake local secrets or config into the image.
+# VITE_API_URL is passed as a build ARG instead (see Dockerfile / fly.toml),
+# and excluding these also stops a stray .env from overriding that value.
+.env
+.env.*
+!.env.example
+
+# Version control and git hooks
+.git
+.gitignore
+.gitattributes
+
+# Local build output and tool caches (rebuilt inside the image)
+.output
+dist
+dist-ssr
+.vite
+.tanstack
+.vinxi
+.nitro
+.routes-check-tmp
+*.local
+
+# Docs, tooling and scripts not needed to build the app
+README.md
+CHANGELOG.md
+AGENTS.md
+docs
+scripts
+migrate_lib_curriculum.py
+eslint.config.js
+.prettierrc
+.prettierignore
+
+# Editor and OS files
+.vscode
+.idea
+.DS_Store
+Thumbs.db
+*.log
+
+# Docker and Fly.io files themselves (used by the tooling, not needed inside
+# the image)
+Dockerfile
+.dockerignore
+docker-compose*.yml
+fly.toml
+.fly

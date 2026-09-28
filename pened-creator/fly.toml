@@ -1,0 +1,57 @@
+# Fly.io config for the pened-creator front end (a TanStack Start SSR app,
+# built with `vite build` and served by nitro's node-server output).
+#
+# Before the first deploy:
+#   fly apps create pened-creator        (or change `app` below)
+#   fly deploy
+#
+# The API side must also be set up for this origin, or login and every data
+# request will fail in the browser:
+#   fly secrets set CORS_ORIGIN="https://pened-creator.fly.dev" -a pened-server
+# (comma-separate it with any other allowed origins). The API's session cookie
+# needs COOKIE_SAMESITE=none because *.fly.dev sites count as cross-site to
+# each other; pened-server already has that secret set.
+
+app = "pened-creator"
+primary_region = "jnb"
+
+[build]
+  dockerfile = "Dockerfile"
+
+  # VITE_API_URL is baked into the client bundle when it is built, so it has to
+  # be passed here as a build argument. A runtime env var or `fly secrets set`
+  # would have no effect. Changing it means redeploying, which rebuilds the
+  # image. Use https:// and no trailing slash.
+  [build.args]
+    VITE_API_URL = "https://pened-server.fly.dev"
+    VITE_TOOL_RENDERER_BASE_URL = "https://pened-tools.fly.dev"
+
+[env]
+  # Must match `internal_port` below and PORT/EXPOSE in the Dockerfile.
+  PORT = "4000"
+
+[http_service]
+  internal_port = 4000
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  # min_machines_running only counts machines in primary_region, so keep the
+  # machine there (jnb) or it can still be autostopped when idle.
+  min_machines_running = 1
+
+  # Checks /login instead of /. The root route runs requireAuth during SSR,
+  # which calls the API without the browser's session cookie, so it redirects
+  # or fails instead of returning 200. /login renders on its own without
+  # touching the API.
+  [[http_service.checks]]
+    grace_period = "20s"
+    interval = "30s"
+    method = "GET"
+    timeout = "5s"
+    path = "/login"
+
+[[vm]]
+  # 1 GB is plenty for a Node SSR server that only renders pages.
+  memory = "1gb"
+  cpu_kind = "shared"
+  cpus = 1
