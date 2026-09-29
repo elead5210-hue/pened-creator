@@ -4,6 +4,9 @@
   "description": "Merged curriculum-tree and lesson-content-generation app: build and organize a curriculum tree, file exam questions into it, generate lesson breakdowns, and carry each breakdown through prompt generation and AI content generation for that lesson.",
   "sideEffects": false,
   "type": "module",
+  "engines": {
+    "node": ">=22.12.0"
+  },
   "scripts": {
     "dev": "vite dev",
     "start": "node .output/server/index.mjs",

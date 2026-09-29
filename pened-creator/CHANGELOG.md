@@ -48,6 +48,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **QA checklist notes** — the route-tree and end-to-end regression
   checklists now include a step to run `npm run verify` and confirm there
   are no unresolved imports after moving or creating components or routes.
+- **Node 22.12+ requirement** — added an `engines.node` field
+  (`>=22.12.0`) to `package.json` and an `.nvmrc` pinning Node 22, matching
+  what the `@tanstack/react-start` packages need. The `verify` CI workflow
+  now reads its Node version from `.nvmrc`, so local and CI runs use the
+  same version. Documented in `README.md` and `AGENTS.md`.
 
 ### Fixed
 
@@ -56,5 +61,42 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   typecheck and build steps of `npm run verify`, enforced in CI. Also
   aligned `import.meta.env` typings for the tool suggestions client
   (`VITE_USE_MOCK_TOOL_SUGGESTIONS`) with `ImportMetaEnv`.
+- **Unresolved `ToolSuggestionModal` import** — `GlobalToolbar.tsx` imported
+  the modal from `@/components/shell/ToolSuggestionModal`, a path that does
+  not exist, which made `npm run build:dev` fail with an
+  `UNLOADABLE_DEPENDENCY` error. The modal lives at
+  `src/components/tools/ToolSuggestionModal.tsx`, so the import now points
+  to `@/components/tools/ToolSuggestionModal`. The shell and tools READMEs
+  describe this location.
+- **Stale `src/routeTree.gen.ts`** — committed the regenerated route tree
+  so `npm run routes:check`, `npm run build` and the `verify` workflow pass.
+  Running on an unsupported Node version could otherwise produce a
+  different generated file and fail the check.
+
+### Changed
+
+- **Dev server port is now fixed and strict** — `vite dev` serves on port
+  3000 with `strictPort: true` (`server.port` in `vite.config.ts`), so a port
+  clash fails loudly instead of silently moving to 3001 and invalidating the
+  documented LAN URLs. Documented in `README.md`.
+- **Build and cache output is ignored consistently** — `.gitignore`,
+  `.prettierignore` and `eslint.config.js` now cover `.vite`,
+  `.routes-check-tmp` and `node_modules/.nitro` alongside `.output`, and
+  `.dockerignore` already excluded them from the Docker build context.
+  `AGENTS.md` and `README.md` note that this output must never be committed
+  and that `src/routeTree.gen.ts` is the only tracked generated file.
+
+### Removed
+
+- **Tracked `.vite/deps` files** — removed `.vite/deps/_metadata.json` and
+  `.vite/deps/package.json`, which are machine-generated dependency-optimizer
+  cache files that should not be in git.
+
+### Verification
+
+- The full `npm run verify` chain (typecheck, lint, Vitest, build) is the
+  check for these changes and runs on Node 22 (see `.nvmrc`), both locally
+  and in the `verify` CI workflow. It includes the Testing Library tests for
+  `GlobalToolbar`, `ToolSuggestionModal` and `toolSuggestionsClient`.
 
 [Unreleased]: #

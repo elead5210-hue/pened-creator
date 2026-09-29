@@ -2,6 +2,8 @@ node_modules
 dist
 .output
 .vinxi
+.vite
+.routes-check-tmp
 pnpm-lock.yaml
 package-lock.json
 bun.lock

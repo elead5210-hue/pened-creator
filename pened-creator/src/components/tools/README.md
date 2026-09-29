@@ -13,6 +13,9 @@ a generated content block actually looks like. `SlideshowSchemaViewer.tsx`
 renders the hardcoded placeholder slideshow JSON schema from
 `@/lib/tools/slideshowSchemaPlaceholder`, for the "Slideshow Schema" side
 tab on the Tools Registry page.
+`ToolSuggestionModal.tsx` is the dialog for submitting a new tool
+suggestion; it is opened from the global toolbar
+(`components/shell/GlobalToolbar.tsx`), not from a page in this folder.
 
 It is intended to be blackboxable: an agent working only inside this
 folder, plus the parent dependencies listed below, should be able to
@@ -24,6 +27,9 @@ project. This README is that contract — keep it in sync with the code.
 - `ToolRegistryCard.tsx`
 - `ToolContentFrame.tsx`
 - `SlideshowSchemaViewer.tsx`
+- `ToolSuggestionModal.tsx`
+- `ToolSuggestionModal.test.tsx` (Vitest + Testing Library tests for the
+  modal)
 
 ## Exports
 
@@ -50,6 +56,18 @@ project. This README is that contract — keep it in sync with the code.
   inline message instead of a blank frame when
   `VITE_TOOL_RENDERER_BASE_URL` is unset (i.e. when
   `encodeToolViewerUrl` returns `undefined`).
+
+### `ToolSuggestionModal.tsx`
+- `ToolSuggestionModal` (named and default export) — props `{ open,
+  onOpenChange, onSubmitted? }`, exported as `ToolSuggestionModalProps`.
+  Renders a Dialog with a single "Tool description" textarea. It
+  validates the text (10 to 2000 characters after trimming) with
+  `validateToolSuggestionDescription`, submits it with
+  `submitToolSuggestion`, and shows a loading state, inline field and form
+  errors, and a success state that closes automatically after a short
+  delay. The dialog cannot be dismissed while a request is in flight, and
+  the form resets each time it closes. `onSubmitted` is called after a
+  successful save. The parent owns the `open` state.
 
 ## Parent dependencies
 
@@ -91,9 +109,26 @@ not on this list, that's a signal this README needs updating first.
 ### `@/lib/utils`
 - `cn` — used in `ToolContentFrame.tsx` to merge className props.
 
+### `@/components/ui/dialog`, `@/components/ui/label`, `@/components/ui/textarea`, `@/components/ui/button`
+- `Dialog`, `DialogContent`, `DialogDescription`, `DialogFooter`,
+  `DialogHeader`, `DialogTitle`, `Label`, `Textarea`, `Button` — used in
+  `ToolSuggestionModal.tsx`.
+
+### `@/lib/tools/toolSuggestionsClient`
+- `submitToolSuggestion`, `validateToolSuggestionDescription`,
+  `ToolSuggestionsApiError`, `TOOL_SUGGESTION_MAX_LENGTH` — used in
+  `ToolSuggestionModal.tsx`. The test file also uses
+  `setToolSuggestionsAdapter`, `realToolSuggestionsAdapter` and the
+  adapter/result types to stub the API.
+
+### `sonner`
+- `toast` — used in `ToolSuggestionModal.tsx` for the success toast.
+
 ### `lucide-react`
 - `AlertTriangle`, `ExternalLink` — used in `ToolContentFrame.tsx`'s
   alert states and "open in new tab" links.
+- `CheckCircle2`, `Loader2` — used in `ToolSuggestionModal.tsx`'s success
+  and sending states.
 
 ## Imported by (outside this folder)
 
@@ -107,6 +142,11 @@ not on this list, that's a signal this README needs updating first.
   `<ToolContentFrame toolId={tool} data={block?.data} />` for each one
   (only a block with a missing/non-string `tool` id still falls back to
   its own "Unrecognized content block" placeholder).
+- `src/components/shell/GlobalToolbar.tsx` — imports `ToolSuggestionModal`
+  from `@/components/tools/ToolSuggestionModal` and renders it, owning
+  its `open` state. It is opened from the "Suggest a tool" item in
+  `GlobalNavContextMenu`. An import from `@/components/shell/...` will
+  not resolve, because the file lives here.
 
 ## Notes for an agent working only in this folder
 
@@ -127,5 +167,11 @@ not on this list, that's a signal this README needs updating first.
   slideshow schema is ready, it should replace the constant in
   `@/lib/tools/slideshowSchemaPlaceholder.ts` rather than this component
   growing its own fetch logic.
+- `ToolSuggestionModal.tsx` talks to the API only through
+  `@/lib/tools/toolSuggestionsClient`. Don't call `fetch` from the
+  component. Tests swap the adapter with `setToolSuggestionsAdapter`, so
+  restore `realToolSuggestionsAdapter` afterwards. Run
+  `npm run verify` after moving or renaming it, since `GlobalToolbar.tsx`
+  and its test depend on the import path.
 - If you add a new import from outside this folder, add it to the
   "Parent dependencies" section above so the contract stays accurate.

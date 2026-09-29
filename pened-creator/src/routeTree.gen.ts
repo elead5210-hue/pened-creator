@@ -46,14 +46,14 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/tools': typeof ToolsRoute
-  '/lessons/$lessonId': typeof LessonsLessonIdRouteWithChildren
+  '/lessons/$lessonId': typeof LessonsLessonIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/tools': typeof ToolsRoute
-  '/lessons/$lessonId': typeof LessonsLessonIdRouteWithChildren
+  '/lessons/$lessonId': typeof LessonsLessonIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -61,30 +61,15 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/tools': typeof ToolsRoute
-  '/lessons/$lessonId': typeof LessonsLessonIdRouteWithChildren
+  '/lessons/$lessonId': typeof LessonsLessonIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths:
-    | '/'
-    | '/login'
-    | '/register'
-    | '/tools'
-    | '/lessons/$lessonId'
+  fullPaths: '/' | '/login' | '/register' | '/tools' | '/lessons/$lessonId'
   fileRoutesByTo: FileRoutesByTo
-  to:
-    | '/'
-    | '/login'
-    | '/register'
-    | '/tools'
-    | '/lessons/$lessonId'
+  to: '/' | '/login' | '/register' | '/tools' | '/lessons/$lessonId'
   id:
-    | '__root__'
-    | '/'
-    | '/login'
-    | '/register'
-    | '/tools'
-    | '/lessons/$lessonId'
+    '__root__' | '/' | '/login' | '/register' | '/tools' | '/lessons/$lessonId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -92,7 +77,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   RegisterRoute: typeof RegisterRoute
   ToolsRoute: typeof ToolsRoute
-  LessonsLessonIdRoute: typeof LessonsLessonIdRouteWithChildren
+  LessonsLessonIdRoute: typeof LessonsLessonIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -135,14 +120,12 @@ declare module '@tanstack/react-router' {
   }
 }
 
-const LessonsLessonIdRouteWithChildren = LessonsLessonIdRoute._addFileChildren({})
-
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   LoginRoute: LoginRoute,
   RegisterRoute: RegisterRoute,
   ToolsRoute: ToolsRoute,
-  LessonsLessonIdRoute: LessonsLessonIdRouteWithChildren,
+  LessonsLessonIdRoute: LessonsLessonIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

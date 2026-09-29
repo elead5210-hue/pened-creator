@@ -34,6 +34,10 @@ export default defineConfig({
     // Binding to all interfaces (rather than the default localhost-only)
     // so the dev server is reachable over the LAN, e.g. http://192.168.1.97:5174.
     host: true,
+    // Fixed port: fail loudly if 3000 is taken instead of silently moving to
+    // 3001, which would invalidate the documented LAN URLs.
+    port: 3000,
+    strictPort: true,
     fs: {
       allow: [__dirname],
     },

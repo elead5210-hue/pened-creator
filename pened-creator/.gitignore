@@ -12,8 +12,11 @@ dist
 dist-ssr
 .output
 .vinxi
+.vite
+.routes-check-tmp
 .tanstack/**
 .nitro
+node_modules/.nitro
 *.local
 
 # Environment files (hold API URLs and other local config). Keep the

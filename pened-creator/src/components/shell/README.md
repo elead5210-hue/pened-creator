@@ -46,6 +46,11 @@ need updating first.
 ### `@/components/ui/button`
 - `Button` — used in `GlobalToolbar.tsx`.
 
+### `@/components/tools/ToolSuggestionModal`
+- `ToolSuggestionModal` — used in `GlobalToolbar.tsx`. The file lives at
+  `src/components/tools/ToolSuggestionModal.tsx`, not in this folder;
+  `GlobalToolbar.tsx` imports it from `@/components/tools/ToolSuggestionModal`.
+
 Nothing in this folder imports from `phase1-tree/` or
 `phase2-content/`.
 
@@ -93,17 +98,19 @@ contents are owned entirely by this component.
 
 ## `ToolSuggestionModal`
 
-`ToolSuggestionModal` now lives in `src/components/tools/`, not in
-this folder — see that folder's README for its contract. It is still
-mounted alongside `GlobalToolbar` and used by this folder's chrome,
-as described below.
+`ToolSuggestionModal` lives in `src/components/tools/ToolSuggestionModal.tsx`,
+not in this folder — see that folder's README for its contract.
+`GlobalToolbar.tsx` imports it from `@/components/tools/ToolSuggestionModal`
+(an import of `@/components/shell/ToolSuggestionModal` will fail to resolve
+and break the build). It is mounted alongside `GlobalToolbar` and used by
+this folder's chrome, as described below.
 
 ### Wiring
 
 - `GlobalToolbar.tsx` owns the open/closed state for the modal (as
   local `useState`) and renders `<ToolSuggestionModal />` alongside
-  its other chrome, passing `open`, `onOpenChange` (or equivalent
-  close handler), and any submit callback.
+  its other chrome, passing `open` and `onOpenChange`. The optional
+  `onSubmitted` callback is not used by the toolbar.
 - A nav/menu action (e.g. a button in `GlobalToolbar` or an entry in
   `GlobalNavContextMenu.tsx`) sets the open state to `true` to launch
   the modal. There is no separate route or deep link for it — it is
@@ -112,17 +119,13 @@ as described below.
 ### Submission flow
 
 - The modal holds its own local form state (the suggestion text) and
-  validates it (non-empty) before allowing submit.
-- On submit, it calls the `onSubmit`/equivalent callback passed down
-  from `GlobalToolbar.tsx` with the suggestion text, then closes
-  itself (clearing local form state) regardless of outcome unless the
-  parent explicitly signals an error to keep it open.
-- Any persistence or notification side effect (e.g. writing the
-  suggestion somewhere, showing a toast) is the responsibility of the
-  handler `GlobalToolbar.tsx` supplies, not of `ToolSuggestionModal`
-  itself — this keeps the modal a dumb, reusable presentation
-  component. If that handler needs a new parent dependency, add it to
-  the "Parent dependencies" section above first.
+  validates it (10 to 2000 characters after trimming) before allowing
+  submit.
+- On submit, the modal itself calls `submitToolSuggestion` from
+  `@/lib/tools/toolSuggestionsClient`, shows a success toast, and
+  closes itself after a short delay. On failure it stays open and shows
+  the error inline. `GlobalToolbar.tsx` supplies no submit handler, so
+  it needs no persistence or notification logic of its own.
 
 ## Imported by (outside this folder)
 
