@@ -1,3 +1,25 @@
+## Pre-merge verification (`npm run verify`)
+
+`npm run verify` is the single required check before merging. It runs, in
+order and stopping at the first failure:
+
+1. `npm run typecheck` (`tsc --noEmit`)
+2. `npm run lint` (ESLint, plus the route-tree, folder-boundary and
+   client-secret checks)
+3. `npm run test` (Vitest)
+4. `npm run build` (`vite build`)
+
+The same command runs in CI via `.github/workflows/verify.yml` on every pull
+request and on pushes to `main`, so anything that fails locally will also
+fail there.
+
+Run it whenever you **move, rename, or create** a component, hook, or lib
+module, and again before you finish a task. Unresolved imports (a path that
+no longer exists after a move, a typo in an `@/` alias, a missing named
+export) are caught by the typecheck and build steps, but only if you
+actually run them. Do not report a change as done, and do not open a pull
+request, until `npm run verify` passes.
+
 ## Route tree (`src/routeTree.gen.ts`)
 
 `src/routeTree.gen.ts` is **generated** by the TanStack Router codegen (via

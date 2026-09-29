@@ -113,7 +113,14 @@ resolving correctly for `activeView` to be computed.
    - [ ] It exits successfully (no diff reported) — confirming the
          regenerated `src/routeTree.gen.ts` committed for this fix is
          actually in sync with `src/routes/`.
-2. Confirm `.github/workflows/verify-routes.yml` is present and configured
+2. Verify imports after moving or creating components or routes. Run
+   `npm run verify` (typecheck, lint, test, build) after any component,
+   hook, lib module or route file has been moved, renamed or created.
+   - [ ] It exits successfully, so there are no unresolved imports (stale
+         relative paths, mistyped `@/` aliases, missing named exports).
+   - [ ] The `.github/workflows/verify.yml` check is green on the pull
+         request.
+3. Confirm `.github/workflows/verify-routes.yml` is present and configured
    to run on changes under `src/routes/` and `src/routeTree.gen.ts`.
    - [ ] Workflow file exists and its `paths` filters cover both.
 
@@ -122,5 +129,5 @@ resolving correctly for `activeView` to be computed.
 - [ ] Scenario A passed
 - [ ] Scenario B passed
 - [ ] Scenario C passed
-- [ ] Regression guard sanity check passed
+- [ ] Regression guard sanity check passed (including `npm run verify`)
 - Tested by: ______________________  Date: ______________________

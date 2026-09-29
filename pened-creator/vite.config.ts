@@ -1,5 +1,5 @@
 
-import { defineConfig } from 'vite'
+import { defineConfig } from 'vitest/config'
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import viteReact from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
@@ -45,5 +45,12 @@ export default defineConfig({
     // client derive the WS target from window.location, so it matches
     // whatever host/port the page was actually served from, whether
     // that's localhost or a LAN IP.
+  },
+  test: {
+    environment: 'jsdom',
+    globals: true,
+    setupFiles: ['./src/test/setup.ts'],
+    include: ['src/**/*.{test,spec}.{ts,tsx}'],
+    css: false,
   },
 })

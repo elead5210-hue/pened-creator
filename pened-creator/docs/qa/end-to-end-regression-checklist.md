@@ -15,9 +15,9 @@ would previously have fallen between two checklists and been missed by
 both. This checklist walks the **whole path in one pass**, start to
 finish, so a regression anywhere along it gets caught by a single run.
 
-This project has no automated test framework configured (see
-`package.json` — lint/format plus Vite dev/build/preview scripts only),
-so this remains a manual walkthrough. Run it:
+Automated checks (typecheck, lint, Vitest, build) run through
+`npm run verify` and don't cover this whole path, so this remains a manual
+walkthrough. Run it:
 
 - Before shipping a release.
 - After any change to `src/routes/index.tsx`, `src/routes/lessons.$lessonId.tsx`,
@@ -59,6 +59,11 @@ behavior differs, treat it as a regression.
 
 ## Setup
 
+0. Run `npm run verify` first, especially if components, hooks, lib
+   modules or routes were moved, renamed or created since the last pass.
+   It must exit successfully, which confirms there are no unresolved
+   imports (typecheck and build fail on them). Fix any failure before
+   starting the walkthrough.
 1. Start the app (`npm run dev`) with a clean/empty IndexedDB — use a
    fresh browser profile or clear site data for the app's origin
    (DevTools → Application → Storage → "Clear site data") — or run the
@@ -279,6 +284,7 @@ pipeline:
 
 ## Sign-off
 
+- [ ] `npm run verify` passed (no unresolved imports)
 - [ ] Full walkthrough (steps 1–9) passed
 - [ ] `slideshow-lesson-id-links-checklist.md` run (sections 3 to 7)
 - Tested by: ______________________  Date: ______________________

@@ -319,9 +319,7 @@ export const mockToolSuggestionsAdapter: ToolSuggestionsAdapter = {
 
 function shouldUseMockByDefault(): boolean {
   try {
-    const flag = (import.meta as unknown as { env?: Record<string, string | undefined> }).env
-      ?.VITE_USE_MOCK_TOOL_SUGGESTIONS;
-    return flag === "true";
+    return import.meta.env.VITE_USE_MOCK_TOOL_SUGGESTIONS === "true";
   } catch {
     return false;
   }

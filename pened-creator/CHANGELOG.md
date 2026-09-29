@@ -37,5 +37,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Global Nav context menu** — added a context menu to the Global Nav,
   giving users quick access to additional actions from the top-level
   navigation.
+- **Single `npm run verify` step** — runs typecheck, lint, test and build
+  in sequence and stops at the first failure. Documented in `README.md`
+  and `AGENTS.md`.
+- **`test` and `typecheck` npm scripts** — `npm run test` runs Vitest
+  (jsdom, Testing Library, jest-dom matchers via `src/test/setup.ts`);
+  `npm run typecheck` runs `tsc --noEmit`.
+- **CI check for `verify`** — `.github/workflows/verify.yml` runs
+  `npm ci` and `npm run verify` on pull requests and pushes to `main`.
+- **QA checklist notes** — the route-tree and end-to-end regression
+  checklists now include a step to run `npm run verify` and confirm there
+  are no unresolved imports after moving or creating components or routes.
+
+### Fixed
+
+- **Unresolved imports reaching the main build** — imports broken by
+  moving or creating components are now caught before merge by the
+  typecheck and build steps of `npm run verify`, enforced in CI. Also
+  aligned `import.meta.env` typings for the tool suggestions client
+  (`VITE_USE_MOCK_TOOL_SUGGESTIONS`) with `ImportMetaEnv`.
 
 [Unreleased]: #

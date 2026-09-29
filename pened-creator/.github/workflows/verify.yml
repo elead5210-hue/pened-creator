@@ -1,0 +1,39 @@
+name: Verify
+
+# Runs the same single command developers run locally (`npm run verify`:
+# typecheck, lint, test, build) so unresolved imports and other breakage
+# fail here before a merge.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: verify-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify (typecheck, lint, test, build)
+        run: npm run verify
+        env:
+          # Placeholder so the build has a valid API URL; nothing is contacted.
+          VITE_API_URL: http://localhost:4000

@@ -16,7 +16,7 @@ import {
   createSuggestToolItem,
   type GlobalNavContextMenuItem,
 } from "@/components/shell/GlobalNavContextMenu";
-import { ToolSuggestionModal } from "@/components/shell/ToolSuggestionModal";
+import { ToolSuggestionModal } from "@/components/tools/ToolSuggestionModal";
 
 /** The three top-level views a user can jump between via the global toolbar. */
 type ShellView = "curriculum" | "content" | "tools";

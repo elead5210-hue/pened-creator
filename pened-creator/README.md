@@ -127,10 +127,27 @@ The same checklist lives in
 [`docs/qa/deployment-login-checklist.md`](docs/qa/deployment-login-checklist.md)
 alongside the other QA checklists.
 
+## Verifying changes
+
+Run `npm run verify` before merging. It is the single check that runs, in
+order and stopping at the first failure:
+
+1. `npm run typecheck` (`tsc --noEmit`)
+2. `npm run lint` (ESLint, plus the route-tree, folder-boundary and
+   client-secret checks)
+3. `npm run test` (Vitest)
+4. `npm run build` (`vite build`)
+
+The same command runs in CI via `.github/workflows/verify.yml` on every pull
+request and on pushes to `main`. Run it after moving, renaming or creating
+components so unresolved imports are caught before they reach the main
+build.
+
 ## Testing
 
-There's no automated test framework wired up yet (see `package.json` —
-only Vite's `dev`/`build`/`preview` scripts). Before releases, and after
+Automated tests run with Vitest and Testing Library (`npm run test`, or
+`npm run test:watch` while developing) and are part of `npm run verify`.
+Before releases, and after
 any change to `src/app.js`, `lessonDetail.js`, `lessonContentView.js`, or
 `newLessonForm.js`, run through
 [`docs/curriculum-import-regression-checklist.md`](docs/curriculum-import-regression-checklist.md) —

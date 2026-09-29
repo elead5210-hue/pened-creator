@@ -1,10 +1,8 @@
-import { useState } from "react";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { GlobalToolbar } from "./GlobalToolbar";
-import { ToolSuggestionModal } from "@/components/tools/ToolSuggestionModal";
 import {
   mockToolSuggestionsAdapter,
   realToolSuggestionsAdapter,
@@ -41,28 +39,20 @@ vi.mock("@/lib/curriculum/shared/schema", () => ({
 }));
 
 const toastSuccess = vi.fn();
-const toastInfo = vi.fn();
 vi.mock("sonner", () => ({
   toast: {
     success: (...args: unknown[]) => toastSuccess(...args),
-    info: (...args: unknown[]) => toastInfo(...args),
     error: vi.fn(),
   },
 }));
 
 // ---------------------------------------------------------------------------
-// Harness: wires the toolbar's onSuggestTool callback to the modal, the same
-// way the app shell is expected to.
+// Harness: GlobalToolbar owns the suggestion modal itself, so rendering the
+// toolbar alone is enough to exercise the full menu -> modal flow.
 // ---------------------------------------------------------------------------
 
 function ShellHarness() {
-  const [open, setOpen] = useState(false);
-  return (
-    <>
-      <GlobalToolbar onSuggestTool={() => setOpen(true)} />
-      <ToolSuggestionModal open={open} onOpenChange={setOpen} />
-    </>
-  );
+  return <GlobalToolbar />;
 }
 
 const VALID_DESCRIPTION = "A tool that turns a lesson into a printable worksheet with answer key.";
@@ -76,7 +66,6 @@ async function openSuggestionModal(user: ReturnType<typeof userEvent.setup>) {
 describe("GlobalToolbar context menu integration", () => {
   beforeEach(() => {
     toastSuccess.mockReset();
-    toastInfo.mockReset();
     setToolSuggestionsAdapter(mockToolSuggestionsAdapter);
   });
 
@@ -187,14 +176,14 @@ describe("GlobalToolbar context menu integration", () => {
     expect(screen.getByTestId("tool-suggestion-description")).toHaveValue("");
   });
 
-  it("falls back to a placeholder toast when no onSuggestTool handler is provided", async () => {
+  it("opens the modal from a bare <GlobalToolbar /> with no props", async () => {
     const user = userEvent.setup();
     render(<GlobalToolbar />);
 
     await user.click(screen.getByTestId("global-nav-context-menu-trigger"));
     await user.click(await screen.findByTestId("global-nav-context-menu-item-suggest-tool"));
 
-    expect(toastInfo).toHaveBeenCalledWith("Tool suggestions are coming soon.");
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByTestId("tool-suggestion-modal")).toBeInTheDocument();
   });
 });

@@ -20,6 +20,15 @@ interface ImportMetaEnv {
    * frame. See lib/toolRenderer/config.ts.
    */
   readonly VITE_TOOL_RENDERER_BASE_URL?: string;
+  /**
+   * Optional toggle for the tool-suggestions mock adapter. Set to "true"
+   * to have toolSuggestionsClient return built-in stub responses (with
+   * simulated latency) instead of calling <VITE_API_URL>/api/tool-suggestions.
+   * Leave unset or "false" to use the real API. Like the other VITE_*
+   * values it is baked in at build time, and it must never be enabled in
+   * production builds. See lib/tools/toolSuggestionsClient.ts.
+   */
+  readonly VITE_USE_MOCK_TOOL_SUGGESTIONS?: string;
 }
 
 interface ImportMeta {

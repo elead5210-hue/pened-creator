@@ -17,7 +17,6 @@ The source audit this was derived from lives in
 - `GlobalToolbar.tsx`
 - `LessonPipelineBadge.tsx`
 - `GlobalNavContextMenu.tsx`
-- `ToolSuggestionModal.tsx`
 
 ## Parent dependencies
 
@@ -94,11 +93,10 @@ contents are owned entirely by this component.
 
 ## `ToolSuggestionModal`
 
-A modal dialog, mounted alongside `GlobalToolbar`, that lets a user
-submit a free-text suggestion for a new interactive tool. It is
-app-wide chrome like the rest of this folder: it doesn't know which
-lesson or phase the user is currently viewing, and it doesn't import
-from `phase1-tree/` or `phase2-content/`.
+`ToolSuggestionModal` now lives in `src/components/tools/`, not in
+this folder — see that folder's README for its contract. It is still
+mounted alongside `GlobalToolbar` and used by this folder's chrome,
+as described below.
 
 ### Wiring
 
