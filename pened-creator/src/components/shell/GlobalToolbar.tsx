@@ -11,6 +11,12 @@ import { computeLessonPipelineStage, type PipelineStage } from "@/lib/curriculum
 import { LessonPipelineBadge } from "@/components/shell/LessonPipelineBadge";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { Button } from "@/components/ui/button";
+import {
+  GlobalNavContextMenu,
+  createSuggestToolItem,
+  type GlobalNavContextMenuItem,
+} from "@/components/shell/GlobalNavContextMenu";
+import { ToolSuggestionModal } from "@/components/shell/ToolSuggestionModal";
 
 /** The three top-level views a user can jump between via the global toolbar. */
 type ShellView = "curriculum" | "content" | "tools";
@@ -180,6 +186,12 @@ export function GlobalToolbar() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [isToolSuggestionModalOpen, setIsToolSuggestionModalOpen] = useState(false);
+
+  // Add future context menu options here; the menu component needs no changes.
+  const contextMenuItems: GlobalNavContextMenuItem[] = [
+    createSuggestToolItem(() => setIsToolSuggestionModalOpen(true)),
+  ];
 
   async function handleLogout() {
     setIsLoggingOut(true);
@@ -197,7 +209,12 @@ export function GlobalToolbar() {
 
   return (
     <div className="border-b border-border bg-secondary/40">
-      <div className="mx-auto flex max-w-4xl flex-wrap items-center gap-1 px-6 py-1.5">
+      <div className="relative mx-auto flex max-w-4xl flex-wrap items-center gap-1 px-6 py-1.5">
+        {/* Pinned to the leftmost edge of the viewport, outside the centered
+            max-w container's content flow, so existing nav items don't shift. */}
+        <div className="fixed left-2 top-1.5 z-40">
+          <GlobalNavContextMenu items={contextMenuItems} triggerLabel="Open navigation menu" />
+        </div>
         <ToolbarLink
           to="/"
           active={activeView === "curriculum"}
@@ -242,6 +259,7 @@ export function GlobalToolbar() {
           </Button>
         ) : null}
       </div>
+      <ToolSuggestionModal open={isToolSuggestionModalOpen} onOpenChange={setIsToolSuggestionModalOpen} />
     </div>
   );
 }

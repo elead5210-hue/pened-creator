@@ -18,6 +18,7 @@ project. This README is that contract — keep it in sync with the code.
 ## Files in this folder
 
 - `toolsClient.ts`
+- `toolSuggestionsClient.ts`
 - `slideshowSchemaPlaceholder.ts`
 
 ## Exports
@@ -36,6 +37,27 @@ project. This README is that contract — keep it in sync with the code.
 There is no `createTool`, `updateTool`, or `deleteTool` here — this app
 can only read the registry, never write to it.
 
+### `toolSuggestionsClient.ts`
+- `ToolSuggestion` — a suggested tool match returned for a given piece
+  of curriculum content: at minimum a `toolId`, the matching `Tool`'s
+  `name`, and a `confidence`/`reason` describing why it was suggested.
+- `getToolSuggestions(input)` — given the content to be matched (e.g. a
+  learning objective or generated content payload), returns a list of
+  `ToolSuggestion`s ranked by relevance.
+
+This client is currently backed by a **mock adapter**: the real
+suggestion endpoint does not exist on penedv1-server yet, so
+`getToolSuggestions` resolves its result locally (deterministically,
+from the already-fetched `Tool` list) instead of calling `apiGet`. The
+function signature and return shape are written to match what the real
+endpoint is expected to return, so that swapping the mock body for a
+real `apiGet("/api/tools/suggestions", ...)` call later should not
+require any caller-facing changes. Callers should treat it exactly
+like any other async data-fetching function (e.g. wrap it in a React
+Query `useQuery`) rather than special-casing it as synchronous or mock
+only, so that the eventual swap to a live endpoint is invisible to
+them.
+
 ### `slideshowSchemaPlaceholder.ts`
 - `SLIDESHOW_SCHEMA_PLACEHOLDER` — a hardcoded placeholder JSON Schema
   object describing the slideshow app's slide-rendering data shape.
@@ -50,7 +72,10 @@ finalized; no other file should need to change as a result.
 
 - `@/lib/curriculum/shared/apiClient` — `toolsClient.ts` imports
   `apiGet` and the `ApiError` class to call the `/api/tools` endpoints
-  and translate a 404 into "not found" for `getTool`.
+  and translate a 404 into "not found" for `getTool`. `toolSuggestionsClient.ts`
+  does not currently import from here, since it is mock-backed; this
+  will become a real dependency once it switches to a live `apiGet`
+  call.
 
 ## Imported by (outside this folder)
 
@@ -85,6 +110,11 @@ finalized; no other file should need to change as a result.
   `lib/curriculum/shared/db.ts` does — callers are expected to use
   `@tanstack/react-query` (already used elsewhere in this app) for
   fetching/caching/invalidation rather than a bespoke pub-sub layer.
+- `toolSuggestionsClient.ts`'s mock adapter is an implementation
+  detail, not a feature to design around — don't add mock-only params
+  or shortcuts to its exported functions that wouldn't also make sense
+  against a real HTTP endpoint. When the real endpoint ships, update
+  the function body in place rather than adding a parallel real client.
 - `slideshowSchemaPlaceholder.ts` is deliberately hardcoded and has no
   parent dependencies of its own — don't wire it up to a live fetch
   speculatively; when the real schema is ready, update its constants

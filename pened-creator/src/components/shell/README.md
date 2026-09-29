@@ -16,6 +16,8 @@ The source audit this was derived from lives in
 
 - `GlobalToolbar.tsx`
 - `LessonPipelineBadge.tsx`
+- `GlobalNavContextMenu.tsx`
+- `ToolSuggestionModal.tsx`
 
 ## Parent dependencies
 
@@ -47,6 +49,82 @@ need updating first.
 
 Nothing in this folder imports from `phase1-tree/` or
 `phase2-content/`.
+
+## `GlobalNavContextMenu`
+
+A right-click/overflow context menu rendered as part of the global
+nav chrome (mounted alongside `GlobalToolbar`). It presents a small,
+fixed list of app-wide actions — it is not a per-page or per-lesson
+menu, and it does not know about `phase1-tree/` or `phase2-content/`
+internals.
+
+### Item structure
+
+Each menu item is a plain object with the shape:
+
+```ts
+type GlobalNavMenuItem = {
+  id: string;          // stable identifier, used as React key
+  label: string;        // visible text
+  icon?: ReactNode;      // optional leading icon
+  onSelect: () => void;  // click handler
+  disabled?: boolean;    // optional, greys out and blocks onSelect
+};
+```
+
+Items are declared as a local array inside `GlobalNavContextMenu.tsx`
+and rendered in order. There is no external registry — the menu's
+contents are owned entirely by this component.
+
+### Adding a new menu option
+
+1. Add a new `GlobalNavMenuItem` entry to the items array in
+   `GlobalNavContextMenu.tsx`, giving it a unique `id` and `label`.
+2. Implement the `onSelect` handler inline, or import a handler from
+   an existing parent dependency (see the list above). If the new
+   option needs something not already imported, add that import to
+   the "Parent dependencies" section first.
+3. Do not add phase-specific logic directly to a menu item — if an
+   option needs to affect `phase1-tree/` or `phase2-content/`, route
+   it through a shared dependency (e.g. `lib/curriculum/shared/`)
+   rather than importing from those folders directly.
+4. Keep item order stable/intentional; new items are typically
+   appended unless there's a clear grouping reason to place them
+   elsewhere.
+
+## `ToolSuggestionModal`
+
+A modal dialog, mounted alongside `GlobalToolbar`, that lets a user
+submit a free-text suggestion for a new interactive tool. It is
+app-wide chrome like the rest of this folder: it doesn't know which
+lesson or phase the user is currently viewing, and it doesn't import
+from `phase1-tree/` or `phase2-content/`.
+
+### Wiring
+
+- `GlobalToolbar.tsx` owns the open/closed state for the modal (as
+  local `useState`) and renders `<ToolSuggestionModal />` alongside
+  its other chrome, passing `open`, `onOpenChange` (or equivalent
+  close handler), and any submit callback.
+- A nav/menu action (e.g. a button in `GlobalToolbar` or an entry in
+  `GlobalNavContextMenu.tsx`) sets the open state to `true` to launch
+  the modal. There is no separate route or deep link for it — it is
+  purely client-side dialog state.
+
+### Submission flow
+
+- The modal holds its own local form state (the suggestion text) and
+  validates it (non-empty) before allowing submit.
+- On submit, it calls the `onSubmit`/equivalent callback passed down
+  from `GlobalToolbar.tsx` with the suggestion text, then closes
+  itself (clearing local form state) regardless of outcome unless the
+  parent explicitly signals an error to keep it open.
+- Any persistence or notification side effect (e.g. writing the
+  suggestion somewhere, showing a toast) is the responsibility of the
+  handler `GlobalToolbar.tsx` supplies, not of `ToolSuggestionModal`
+  itself — this keeps the modal a dumb, reusable presentation
+  component. If that handler needs a new parent dependency, add it to
+  the "Parent dependencies" section above first.
 
 ## Imported by (outside this folder)
 

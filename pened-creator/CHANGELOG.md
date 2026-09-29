@@ -15,6 +15,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Tool suggestions API contract hand-off document** — added a document
+  describing the API contract for the new tool suggestions feature, to be
+  used as a hand-off reference between frontend and backend work.
 - **YouTube Keywords / Video Search step (Phase 2)** — a new step in the
   Phase 2 (Content Generation) lifecycle, placed between "View Content"
   and "Image Generation" in the lesson detail step sidebar.
@@ -31,5 +34,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   - Keywords and search results for this step are **session-only**:
     nothing is persisted to the lesson record or the server, so they're
     cleared on a page/session refresh and must be regenerated.
+- **Global Nav context menu** — added a context menu to the Global Nav,
+  giving users quick access to additional actions from the top-level
+  navigation.
 
 [Unreleased]: #
