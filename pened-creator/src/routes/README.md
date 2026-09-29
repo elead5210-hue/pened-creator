@@ -57,7 +57,7 @@ Other primitives may be used depending on the route.
 ### `@/components/curriculum/phase2-content/`
 - `lessons.$lessonId.tsx` imports `PromptViewer`, `PasteResponseForm`,
   `LessonContentView`, `ImagePromptGenerator`, `YoutubeKeywordGenerator`,
-  `StepSidebar`.
+  `StepSidebar`, `SlideshowDeckGenerator`.
 
 ### `@/components/curriculum/phase3-games/`
 - `lessons.$lessonId.tsx` imports `GamesPlaceholder` to render the new
@@ -87,6 +87,9 @@ breakdown.
 
 ### `@/lib/tools/`
 - `tools.tsx` imports `getTools`, `Tool` (type) from `toolsClient.ts`.
+
+### `@/lib/utils`
+- `cn` — used in `tools.tsx` to merge conditional class names.
 
 ### `@/hooks/`
 - `index.tsx` imports `useTreeExpandedState` from

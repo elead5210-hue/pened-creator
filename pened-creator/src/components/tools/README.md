@@ -106,6 +106,21 @@ not on this list, that's a signal this README needs updating first.
   `ToolContentFrame.tsx` for the "not configured" and "failed to embed"
   states.
 
+### `@/lib/curriculum/phase2-content/slideshowInteractiveContent`
+- `SLIDESHOW_TOOL_ID` — used in `ToolContentFrame.tsx` to recognize a
+  slideshow content block, which is too large to preview inline.
+
+### `@/lib/curriculum/phase2-content/slideshowToolUrl`
+- `resolveSlideshowLink` — used in `ToolContentFrame.tsx` to build the
+  "Open full lesson slideshow" link shown in place of the inline preview.
+
+Why the tools components reach into `phase2-content/` lib code: the
+slideshow tool id and the lesson-slideshow URL logic are defined there,
+next to the deck builder, and `ToolContentFrame.tsx` only consumes them
+as read-only constants/helpers. Moving them into a shared module would
+be a cleaner long-term direction, but is out of scope for this
+boundary fix; until then, keep these two imports limited to that use.
+
 ### `@/lib/utils`
 - `cn` — used in `ToolContentFrame.tsx` to merge className props.
 

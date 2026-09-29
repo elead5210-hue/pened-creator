@@ -46,6 +46,11 @@ need updating first.
 ### `@/components/ui/button`
 - `Button` — used in `GlobalToolbar.tsx`.
 
+### `@/components/ui/dropdown-menu`
+- `DropdownMenu`, `DropdownMenuTrigger`, `DropdownMenuContent`,
+  `DropdownMenuItem` — used in `GlobalNavContextMenu.tsx` for the
+  menu's open/close, keyboard, focus and click-outside behavior.
+
 ### `@/components/tools/ToolSuggestionModal`
 - `ToolSuggestionModal` — used in `GlobalToolbar.tsx`. The file lives at
   `src/components/tools/ToolSuggestionModal.tsx`, not in this folder;

@@ -73,6 +73,29 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   Running on an unsupported Node version could otherwise produce a
   different generated file and fail the check.
 
+- **Undocumented cross-folder imports failing `boundaries:check`** — the
+  six imports the folder-boundary check reported are now listed in the
+  'Parent dependencies' section of the matching README, so
+  `npm run boundaries:check`, `npm run build` and `npm run verify` are no
+  longer blocked by it: `@/components/ui/dropdown-menu` in
+  `src/components/shell/README.md`;
+  `@/lib/curriculum/phase2-content/slideshowInteractiveContent` and
+  `slideshowToolUrl` in `src/components/tools/README.md`;
+  `@/lib/curriculum/phase2-content/slideshowDeckValidator` in
+  `src/lib/curriculum/shared/README.md` (noted there as a known
+  shared-to-phase2 exception); and
+  `@/components/curriculum/phase2-content/SlideshowDeckGenerator` and
+  `@/lib/utils` in `src/routes/README.md`. No imports were removed or
+  moved.
+- **Unresolved `../styles.css?url` warning in the boundary checker** —
+  `scripts/check-folder-boundaries.js` now strips Vite query suffixes such
+  as `?url`, `?raw` and `?inline` before resolving relative and `@/`
+  specifiers, so `routes/__root.tsx`'s `../styles.css?url` import resolves to
+  `src/styles.css` and is validated like any other import instead of being
+  skipped with a warning. Resolved non-code asset imports (styles, images,
+  fonts) are treated as allowed asset imports and need no entry in a README's
+  'Parent dependencies' section.
+
 ### Changed
 
 - **Dev server port is now fixed and strict** — `vite dev` serves on port
@@ -98,5 +121,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   check for these changes and runs on Node 22 (see `.nvmrc`), both locally
   and in the `verify` CI workflow. It includes the Testing Library tests for
   `GlobalToolbar`, `ToolSuggestionModal` and `toolSuggestionsClient`.
+- The complete chain runs in this order: the prebuild steps (`routes:check`,
+  `boundaries:check`, `secrets:check`), then typecheck, lint, Vitest and the
+  production build. With the boundary fixes above in place,
+  `boundaries:check` no longer stops the chain, so the steps after it are
+  the ones to watch on the next run on Node 22; any failure they surface is
+  a real issue to fix, not something to skip.
+- The build rewrites `src/routeTree.gen.ts` as part of route generation. The
+  committed file matches the generator output on Node 22, so
+  `git diff --exit-code src/routeTree.gen.ts` should report no changes after
+  `npm run build`. A diff there means the committed route tree is stale (or
+  the run used a different Node version) and the regenerated file should be
+  committed.
 
 [Unreleased]: #

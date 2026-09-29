@@ -123,6 +123,20 @@ implemented there rather than duplicated here. This folder, along with
 dependencies in the project — every other blackboxed folder that
 touches curriculum or lesson data depends on it, not the reverse.
 
+### `@/lib/curriculum/phase2-content/slideshowDeckValidator`
+- `validateDeck`, `formatDeckErrors` — used in `db.ts` to validate a
+  slideshow deck before it is saved to the server and to build the
+  error message when a deck is invalid.
+
+This is a second shared-to-phase2 edge, alongside `lessonRecord` and
+`slideshowInteractiveContent` above, and it runs against the intended
+direction (phase2 normally depends on `shared/`, not the reverse). It
+is kept for now because the deck schema and its validator are defined
+in `phase2-content/`, next to the deck builder, and `db.ts` must reject
+an invalid deck before the `PUT`. Treat it as a known exception: don't
+add further imports from `phase2-content/` here, and if the validator
+is ever moved into `shared/`, remove this entry.
+
 ## Imported by (outside this folder)
 
 - **`components/curriculum/phase1-tree/`** — `schema.ts`

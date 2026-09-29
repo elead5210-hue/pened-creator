@@ -74,6 +74,37 @@ const BOUNDARIES = [
 const SCANNABLE_EXTENSIONS = [".ts", ".tsx"];
 const RESOLVE_EXTENSIONS = [".ts", ".tsx", ".js", ".jsx"];
 
+/**
+ * Non-code files that source files may import with a Vite query suffix
+ * (e.g. `../styles.css?url`). They are resolved like any other import so
+ * they are validated as real files, but they are treated as allowed asset
+ * imports and are not subject to the cross-folder README documentation
+ * rule, since they carry no code dependency.
+ */
+const ASSET_EXTENSIONS = new Set([
+  ".css",
+  ".scss",
+  ".sass",
+  ".less",
+  ".svg",
+  ".png",
+  ".jpg",
+  ".jpeg",
+  ".gif",
+  ".webp",
+  ".avif",
+  ".ico",
+  ".woff",
+  ".woff2",
+  ".json",
+  ".txt",
+]);
+
+/** Removes a Vite query/hash suffix such as `?url`, `?raw` or `?inline` from a specifier. */
+function stripQuerySuffix(specifier) {
+  return specifier.replace(/[?#].*$/, "");
+}
+
 /** Files under `src/` that are generated or otherwise out of scope for this check. */
 const EXCLUDED_FILES = new Set(["routeTree.gen.ts"]);
 
@@ -145,12 +176,13 @@ function extractSpecifiers(source) {
  */
 function resolveSpecifier(specifier, importerRelPath) {
   let targetRelNoExt;
+  const cleanSpecifier = stripQuerySuffix(specifier);
 
-  if (specifier.startsWith("@/")) {
-    targetRelNoExt = specifier.slice(2);
-  } else if (specifier.startsWith(".")) {
+  if (cleanSpecifier.startsWith("@/")) {
+    targetRelNoExt = cleanSpecifier.slice(2);
+  } else if (cleanSpecifier.startsWith(".")) {
     const importerDir = path.posix.dirname(importerRelPath);
-    targetRelNoExt = path.posix.normalize(path.posix.join(importerDir, specifier));
+    targetRelNoExt = path.posix.normalize(path.posix.join(importerDir, cleanSpecifier));
   } else {
     // Bare package specifier (react, lucide-react, sonner, etc.) - not
     // this script's concern.
@@ -239,6 +271,10 @@ function main() {
         }
         continue;
       }
+
+      // Asset imports (styles, images, fonts, ...) resolved via a Vite query
+      // suffix are allowed and carry no code dependency to document.
+      if (ASSET_EXTENSIONS.has(path.posix.extname(resolvedTarget))) continue;
 
       const isInternal =
         resolvedTarget === owner.folder || resolvedTarget.startsWith(`${owner.folder}/`);
