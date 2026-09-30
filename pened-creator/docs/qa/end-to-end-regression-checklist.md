@@ -252,6 +252,86 @@ full on every full regression pass** (its sections 3 to 7 at least).
 - [ ] **Expected:** the edit shows immediately, and the lesson has exactly
       one slideshow entry in its interactive content.
 
+### 10. Slide Data step (per-slide data view)
+
+This step follows the deck saved in step 9. It is a read-only view of the
+saved deck, one slide per card.
+
+**Step order, numbering and locked state**
+
+- [ ] On a lesson with no saved deck, look at the step list on the right.
+- [ ] **Expected:** "Slide Data" appears directly after "Generate Slideshow
+      Data" and before "Games", the step numbers run in order with no
+      gaps or duplicates, and "Slide Data" shows the lock icon and cannot
+      be opened by click or keyboard.
+- [ ] With a screen reader (or by inspecting the accessible name), check
+      the step buttons.
+- [ ] **Expected:** each step is announced with its position and state,
+      for example "Step 8 of 9: Slide Data, locked", and the current step
+      is announced as the current step.
+- [ ] Save a deck in the "Generate Slideshow Data" step.
+- [ ] **Expected:** "Slide Data" unlocks (it never shows a completed
+      check, since it only displays data), and a "Next: Slide Data"
+      call-to-action appears above the slideshow step's content.
+- [ ] Click **Next: Slide Data**.
+- [ ] **Expected:** the Slide Data step opens on the first slide.
+
+**Navigation**
+
+- [ ] On a deck with three or more slides, check the first slide.
+- [ ] **Expected:** a card shows the slide's id, title, background and
+      each element (type, position, size, and its content or source). The
+      breadcrumb shows "Slide 1 of N" with the slide title, and Previous
+      is disabled.
+- [ ] Click **Next** repeatedly until the last slide.
+- [ ] **Expected:** each click shows the next slide's data in deck order,
+      the position label updates, and Next is disabled on the last slide.
+- [ ] Click **Previous** back to the first slide.
+- [ ] **Expected:** slides are shown in reverse order, and Previous is
+      disabled again on the first slide.
+
+**Keyboard and screen reader**
+
+- [ ] Tab to the navigation and press the Left and Right arrow keys.
+- [ ] **Expected:** the slide changes, and the arrow keys do nothing past
+      the first or last slide.
+- [ ] Activate Next with the keyboard, or press an arrow key.
+- [ ] **Expected:** focus moves to the slide card, which is announced as a
+      region with its title and position (for example "Title, slide 2 of
+      5"). The new position is also announced through the polite live
+      region.
+- [ ] Open the Slide Data step for the first time.
+- [ ] **Expected:** focus is not moved into the card just because the
+      step opened.
+
+**Empty, invalid and single-slide decks**
+
+- [ ] Open a lesson whose deck has one slide.
+- [ ] **Expected:** the message "This deck has a single slide." is shown,
+      and both Previous and Next are disabled.
+- [ ] Open a slide that has no elements.
+- [ ] **Expected:** the card says the slide has no elements, and nothing
+      crashes.
+- [ ] Open a slide with no title.
+- [ ] **Expected:** the heading falls back to "Slide N".
+- [ ] If a saved deck is malformed or fails validation (for example a
+      hand-edited record), open Slide Data.
+- [ ] **Expected:** an error alert lists the problems by path and no
+      navigation is shown. It does not throw or blank the page.
+
+**Returning after edits**
+
+- [ ] Go to the Slide Data step, move to a later slide, switch to another
+      step and come back without changing anything.
+- [ ] **Expected:** the view opens without errors on a valid slide.
+- [ ] Paste and save an edited deck with a different number of slides,
+      then open Slide Data.
+- [ ] **Expected:** the view starts on the first slide of the new deck, the
+      total is correct, and no stale data from the old deck is shown.
+- [ ] Open a different lesson.
+- [ ] **Expected:** the Slide Data step shows that lesson's own deck (or
+      stays locked), never the previous lesson's.
+
 ## Pass criteria
 
 All expected results above must hold. In particular, across the full
@@ -281,10 +361,15 @@ pipeline:
   deck in it), and regenerating a deck replaces the slideshow entry rather
   than adding a second one (see
   `slideshow-lesson-id-links-checklist.md`).
+- The Slide Data step stays locked until a deck is saved, shows one slide
+  per card with working Previous/Next and arrow-key navigation (disabled
+  at the first and last slide), handles empty, invalid and single-slide
+  data without crashing, and resets to the first slide when the deck is
+  replaced.
 
 ## Sign-off
 
 - [ ] `npm run verify` passed (no unresolved imports)
-- [ ] Full walkthrough (steps 1–9) passed
+- [ ] Full walkthrough (steps 1–10) passed
 - [ ] `slideshow-lesson-id-links-checklist.md` run (sections 3 to 7)
 - Tested by: ______________________  Date: ______________________

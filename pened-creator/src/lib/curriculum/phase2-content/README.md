@@ -80,7 +80,10 @@ from.
 - `slideshowDeckValidator.ts` — parses and validates the pasted AI
   response for the "Generate Slideshow Data" step against the same
   Deck schema `slideshowPromptBuilder.ts` sends out (`parseDeckJson`,
-  `validateDeck`, `formatDeckErrors`, `DeckError`). It enforces the
+  `validateDeck`, `parseAndValidateDeck`, `formatDeckErrors`,
+  `DeckError`, plus the slide data model types `SlideshowDeck`,
+  `SlideData`, `SlideElementData`, `SlidePosition`, `SlideSize`,
+  `ElementType` and `ParseDeckResult`). It enforces the
   structural rules pened-tools applies to a deck it loads by lesson id,
   so a deck can't pass here and then fail there: `slides` is a non-empty
   array; every slide has an `elements` array (an empty array is fine, but
@@ -98,6 +101,48 @@ from.
   `validateDeck` again before making any request, so no path (pasted,
   generated or migrated) can save a deck pened-tools would reject. No
   internal dependencies.
+
+  **Slide data model.** A `SlideshowDeck` is `{ version: "v1", id,
+  title?, background?, metadata: { title, id? }, slides: SlideData[] }`.
+  A `SlideData` is `{ id, title?, background?, elements:
+  SlideElementData[] }`, and a `SlideElementData` is `{ id, type, position:
+  { x, y }, size: { width, height }, content?, src? }` where `type` is
+  one of `text`, `image`, `shape` or `video`, and `width`/`height` may
+  also be the literal `"auto"`. Unknown optional fields are typed via an
+  index signature and passed through untouched. These types describe
+  data that has passed validation; they do not replace it, so always
+  obtain a typed deck through `parseAndValidateDeck` rather than casting.
+
+  **`parseAndValidateDeck(input)`** accepts raw pasted text (run through
+  `parseDeckJson`, so fences and stray prose are stripped) or an
+  already-parsed value, and returns a discriminated `ParseDeckResult`:
+  `{ ok: true, deck, errors: [] }` or `{ ok: false, deck: null, errors }`.
+  It never throws. Text that can't be parsed as a JSON object produces a
+  single error with path `"$"`; otherwise `errors` lists every per-field
+  problem with a dotted path such as `slides[0].elements[1].src`.
+  `PasteSlideshowDeckResponseForm.tsx` uses it to show a summary message
+  for unparseable text and a field list for schema failures before
+  anything is saved.
+- `slideshowDeckSlides.ts` — safely extracts a normalized, ordered slide
+  list from a saved deck record for the per-slide data view
+  (`extractSlides`, `normalizeDeckSlides`, `clampSlideIndex`,
+  `NormalizedSlide`, `ExtractSlidesResult`). `extractSlides(savedDeck)`
+  accepts raw text, a JSON string, a parsed deck, or `null`/`undefined`,
+  never throws, and returns a discriminated result by `status`: `"ok"`
+  (with `slides`, `deckTitle`, `totalSlides` and `isSingleSlide`),
+  `"empty"` (nothing saved yet: null, undefined or a blank string) or
+  `"invalid"` (unparseable or failing validation, with `errors`). A deck
+  with an empty `slides` array is `"invalid"`, not `"empty"`, matching
+  `validateDeck`. Each `NormalizedSlide` has a zero-based `index`, a
+  one-based `number`, the slide `id`, a `title` (falling back to
+  `"Slide N"` when missing or blank) and the original slide object in
+  `data`, in deck order. `clampSlideIndex(index, totalSlides)` keeps a
+  current-slide index in range (returning 0 for an empty deck or a
+  non-finite index), so the view stays valid when the user returns to it
+  after the deck changes. Validation is delegated to
+  `slideshowDeckValidator.ts`'s `parseAndValidateDeck`, so a slide that
+  shows up here has passed the same checks as a saved deck. Tests are in
+  `slideshowDeckSlides.test.ts`. Depends on `./slideshowDeckValidator`.
 - `slideshowInteractiveContent.ts` — pure helpers for reading and
   writing a lesson's slideshow deck as an `interactiveContent` entry
   (`SLIDESHOW_TOOL_ID`, `InteractiveContentEntry`, `InteractiveContent`,

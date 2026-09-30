@@ -154,6 +154,10 @@ export function isPhase3Unlocked(_stage: PipelineStage): boolean {
  *     lesson's already-generated content, and its own progress is
  *     persisted (it reports "complete" once "images-generated" is
  *     reached).
+ *   - "slide-data" is a read-only view of the slideshow deck saved by
+ *     the "slideshow-data" step, so it stays locked until a deck has been
+ *     saved on the lesson and is otherwise "available" (it has no work of
+ *     its own to complete).
  */
 export const PHASE2_STEPS = [
   "breakdown",
@@ -163,6 +167,7 @@ export const PHASE2_STEPS = [
   "youtube-keywords",
   "image-generation",
   "slideshow-data",
+  "slide-data",
   "games",
 ] as const;
 
@@ -278,6 +283,12 @@ export function getPhase2StepUnlockStatus(
       // stage rather than off of the unlock condition itself.
       if (!hasAllImagePromptsUploaded(lessonRecord)) return "locked";
       return lessonRecord?.slideshowDeck ? "complete" : "available";
+
+    case "slide-data":
+      // A per-slide view of the deck saved by "slideshow-data": locked
+      // until a deck exists on the lesson record. It only displays data,
+      // so it never resolves to "complete".
+      return lessonRecord?.slideshowDeck ? "available" : "locked";
 
     case "games":
       // Phase 3's Games section is just a placeholder for now (see

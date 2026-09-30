@@ -56,10 +56,30 @@ function displayStatusFor(status: StepUnlockStatus, isActive: boolean): StepStat
   return status;
 }
 
+/**
+ * Spoken description of a step's state, since the visual indicator (a lock
+ * icon, a check mark or a number) isn't announced by screen readers.
+ */
+function statusAnnouncement(status: StepStatus): string {
+  switch (status) {
+    case "locked":
+      return "locked, complete the earlier steps to unlock";
+    case "complete":
+      return "completed";
+    case "current":
+      return "current step";
+    default:
+      return "available";
+  }
+}
+
 function StepIndicator({ status, stepNumber }: { status: StepStatus; stepNumber: number }) {
   if (status === "locked") {
     return (
-      <span className="flex size-6 shrink-0 items-center justify-center rounded-full border border-border bg-muted text-muted-foreground">
+      <span
+        aria-hidden="true"
+        className="flex size-6 shrink-0 items-center justify-center rounded-full border border-border bg-muted text-muted-foreground"
+      >
         <Lock className="size-3" />
       </span>
     );
@@ -67,7 +87,10 @@ function StepIndicator({ status, stepNumber }: { status: StepStatus; stepNumber:
 
   if (status === "complete") {
     return (
-      <span className="flex size-6 shrink-0 items-center justify-center rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-600">
+      <span
+        aria-hidden="true"
+        className="flex size-6 shrink-0 items-center justify-center rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-600"
+      >
         <Check className="size-3.5" />
       </span>
     );
@@ -75,14 +98,20 @@ function StepIndicator({ status, stepNumber }: { status: StepStatus; stepNumber:
 
   if (status === "current") {
     return (
-      <span className="flex size-6 shrink-0 items-center justify-center rounded-full border-2 border-primary bg-primary/10 text-xs font-semibold text-primary">
+      <span
+        aria-hidden="true"
+        className="flex size-6 shrink-0 items-center justify-center rounded-full border-2 border-primary bg-primary/10 text-xs font-semibold text-primary"
+      >
         {stepNumber}
       </span>
     );
   }
 
   return (
-    <span className="flex size-6 shrink-0 items-center justify-center rounded-full border border-border bg-transparent text-xs font-medium text-muted-foreground">
+    <span
+      aria-hidden="true"
+      className="flex size-6 shrink-0 items-center justify-center rounded-full border border-border bg-transparent text-xs font-medium text-muted-foreground"
+    >
       {stepNumber}
     </span>
   );
@@ -90,7 +119,11 @@ function StepIndicator({ status, stepNumber }: { status: StepStatus; stepNumber:
 
 /**
  * Vertical, persistent list of the Phase 2 lifecycle steps (Breakdown,
- * Generate Prompt, Paste AI Response, View Content, ...). Intended to sit
+ * Generate Prompt, Paste AI Response, View Content, ..., Slideshow Data,
+ * Slide Data). The "Slide Data" step (value "slide-data") comes directly
+ * after the slideshow data paste step and is supplied by the caller in
+ * `steps`, like every other step, so its position and unlock status are
+ * not hard-coded here. Intended to sit
  * in a right-hand rail next to the main editing area, replacing the old
  * horizontal Tabs/TabsList so the main pane can be wider.
  *
@@ -137,6 +170,7 @@ export function StepSidebar<TValue extends string = string>({
             key={step.value}
             type="button"
             disabled={isLocked}
+            aria-label={`Step ${index + 1} of ${steps.length}: ${step.label}, ${statusAnnouncement(status)}`}
             aria-current={status === "current" ? "step" : undefined}
             onClick={() => {
               if (isLocked || status === "current") return;

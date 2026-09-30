@@ -58,6 +58,48 @@ The source audit this was derived from lives in
   server), so it appears only after the deck has been saved. If the
   lesson id is invalid or `VITE_TOOL_RENDERER_BASE_URL` is unset or
   invalid, a visible inline error is shown instead of a link.
+- `SlideDataViewer.tsx`, `SlideDataCard.tsx`,
+  `SlideDataBreadcrumbNav.tsx` — the "Slide Data" step, shown after the
+  "Generate Slideshow Data" step once a deck has been saved.
+  `SlideDataViewer.tsx` takes the lesson's saved deck (`slideshowDeck`:
+  a parsed object, JSON/raw text, or null/undefined) and an optional
+  `initialIndex`, extracts the slides via `extractSlides`, and shows one
+  slide per card. It tracks the current index (kept in range with
+  `clampSlideIndex`, so it stays valid if the deck shrinks), moves focus
+  to the card region after the user navigates (by button or arrow key)
+  but never on initial mount or when the deck is replaced, and renders
+  an empty state (nothing saved) or an error alert listing validation
+  problems (invalid deck) instead of the card. It compares the deck by
+  content: a background refresh that supplies an identical deck keeps
+  the user's current slide, while a genuinely changed deck (for example
+  a re-saved one) resets the view to the first slide. The card region
+  has `role="region"` and an accessible name of the form "Title, slide N
+  of M". `SlideDataCard.tsx` renders one slide's data
+  object: id, title, background, each element (type, position, size,
+  `content`/`src`, other fields) and any other slide-level fields.
+  `SlideDataBreadcrumbNav.tsx` is the breadcrumb-style navigation: a
+  Previous button, a "Slide N of M" trail with the slide title, and a
+  Next button, with Previous disabled on the first slide and Next
+  disabled on the last (both disabled for a single-slide deck). Left and
+  right arrow keys also navigate (while focus is inside the navigation),
+  and the position is announced through a polite live region. Tests are
+  in `SlideDataViewer.test.tsx`.
+
+  `StepSidebar.tsx` gives each step button an accessible name that
+  includes its position and state (for example "Step 8 of 9: Slide Data,
+  locked, complete the earlier steps to unlock"); the visual indicators
+  are hidden from assistive technology.
+
+  The "slide-data" step's unlock status comes from the shared
+  `getPhase2StepStatuses` lookup in `lessonPipelineStatus.ts` like every
+  other step (locked until a deck is saved on the lesson, otherwise
+  "available"; it never reports "complete"), not from a local override in
+  the route. Once a deck is saved, the "slideshow-data" step in
+  `lessons.$lessonId.tsx` shows a "Next: Slide Data" call-to-action
+  above `SlideshowDeckGenerator`. The route also keys `SlideDataViewer`
+  on the lesson id and a reset counter that is bumped when the lesson
+  changes or the deck is re-saved, so the viewer never carries a stale
+  slide position over.
 - `toolRenderers/` — `ContentDispatcher.tsx`, which now routes every
   content block through `ToolContentFrame` (no local renderer
   components remain in this subfolder).
@@ -94,7 +136,10 @@ consumes:
   `YoutubeKeywordItem` (type), `YoutubeKeywordValidationError` (type) —
   used in `PasteYoutubeKeywordResponseForm.tsx`.
 - `lessonPipelineStatus` — `StepUnlockStatus` (type) — used in
-  `StepSidebar.tsx`.
+  `StepSidebar.tsx`; the route reads `getPhase2StepStatuses` (which now
+  includes `"slide-data"`) from it.
+- `schema` and `db` are not imported by the Slide Data components; they
+  receive the saved deck as a prop from the lesson route.
 
 ### `@/lib/tools/`
 - `toolsClient` — `getTools` — used in `PasteResponseForm.tsx` to
@@ -118,8 +163,14 @@ for its own parent dependencies, which point back into
   `ImagePromptGenerator.tsx`.
 - `slideshowPromptBuilder` — `buildSlideshowPromptRequest` — used in
   `SlideshowDeckGenerator.tsx`.
-- `slideshowDeckValidator` — `parseDeckJson`, `validateDeck`,
-  `DeckError` (type) — used in `PasteSlideshowDeckResponseForm.tsx`.
+- `slideshowDeckValidator` — `parseAndValidateDeck`, `validateDeck`,
+  `DeckError`, `SlideshowDeck` (types) — used in
+  `PasteSlideshowDeckResponseForm.tsx`; `formatDeckErrors` — used in
+  `SlideDataViewer.tsx`; `SlideData`, `SlideElementData` (types) — used
+  in `SlideDataCard.tsx`.
+- `slideshowDeckSlides` — `extractSlides`, `clampSlideIndex` — used in
+  `SlideDataViewer.tsx` to turn the saved deck into a normalized,
+  ordered slide list.
 - `slideshowToolUrl` — `resolveSlideshowLink` — used in
   `SlideshowDeckGenerator.tsx` to build its saved-deck summary's "Open
   in pened-tools" link from the lesson id (not from the deck).
@@ -143,7 +194,7 @@ for its own parent dependencies, which point back into
   placeholder instead.
 
 ### `@/lib/utils`
-- `cn` — used in `StepSidebar.tsx`.
+- `cn` — used in `StepSidebar.tsx` and `SlideDataBreadcrumbNav.tsx`.
 
 ### `@/components/ui/*`
 Standard shadcn/ui primitives, treated as a standing shared baseline
@@ -151,6 +202,9 @@ Standard shadcn/ui primitives, treated as a standing shared baseline
 own). Each item below names the underlying module (in parentheses)
 alongside the exports this folder uses from it:
 - `Badge` (`badge`)
+- `Breadcrumb`/`BreadcrumbItem`/`BreadcrumbList`/`BreadcrumbPage`/
+  `BreadcrumbSeparator` (`breadcrumb`) — used in
+  `SlideDataBreadcrumbNav.tsx`
 - `Button` (`button`)
 - `Card`/`CardContent`/`CardHeader`/`CardTitle`/`CardDescription`/
   `CardFooter` (`card`)
@@ -175,7 +229,10 @@ file.
   `PasteResponseForm`, `LessonContentView`, `ImagePromptGenerator`,
   `YoutubeKeywordGenerator`, `StepSidebar`, `SlideshowDeckGenerator`
   (which in turn imports `PasteSlideshowDeckResponseForm` from within
-  this folder).
+  this folder), and `SlideDataViewer` (which in turn imports
+  `SlideDataCard` and `SlideDataBreadcrumbNav`). The route adds a
+  `"slide-data"` step after `"slideshow-data"`; it stays locked until a
+  slideshow deck is saved on the lesson.
 - `src/routes/tools.tsx` and `src/routes/tools.interactive.tsx` —
   import `toolRenderers/ContentDispatcher` directly. These two
   dummy-data preview routes bypass the rest of this folder and only

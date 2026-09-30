@@ -37,6 +37,7 @@ import ImagePromptGenerator from "@/components/curriculum/phase2-content/ImagePr
 import { YoutubeKeywordGenerator } from "@/components/curriculum/phase2-content/YoutubeKeywordGenerator";
 import { StepSidebar, type StepSidebarItem } from "@/components/curriculum/phase2-content/StepSidebar";
 import { SlideshowDeckGenerator } from "@/components/curriculum/phase2-content/SlideshowDeckGenerator";
+import { SlideDataViewer } from "@/components/curriculum/phase2-content/SlideDataViewer";
 import { GamesPlaceholder } from "@/components/curriculum/phase3-games/GamesPlaceholder";
 import { LessonStatus } from "@/lib/curriculum/phase2-content/lessonRecord";
 import { requireAuth } from "@/lib/auth/routeGuard";
@@ -114,6 +115,7 @@ type LifecycleTab =
   | "youtube-keywords"
   | "image-generation"
   | "slideshow-data"
+  | "slide-data"
   | "games";
 
 /** Which tab a lesson should land on by default, based on how far along its
@@ -151,6 +153,7 @@ const STEP_LABELS: Record<LifecycleTab, string> = {
   "youtube-keywords": "YouTube Videos",
   "image-generation": "Image Generation",
   "slideshow-data": "Generate Slideshow Data",
+  "slide-data": "Slide Data",
   games: "Games",
 };
 
@@ -185,6 +188,12 @@ function LessonDetail() {
   // session-only side lookup, so it's reset below whenever the user
   // navigates to a different lesson, and doesn't survive a page refresh.
   const [youtubeKeywords, setYoutubeKeywords] = useState<string[] | null>(null);
+
+  // Bumped whenever the Slide Data view should start fresh: when the user
+  // navigates to a different lesson, or when the slideshow deck is re-saved.
+  // It is used as part of SlideDataViewer's key so the viewer returns to the
+  // first slide instead of keeping a stale position from an older deck.
+  const [slideDataResetKey, setSlideDataResetKey] = useState(0);
 
   // Guards the one-time "pick up where you left off" tab default below so
   // it only fires once per lesson visit (on first load of this lessonId),
@@ -263,6 +272,7 @@ function LessonDetail() {
   // never bleed into this one.
   useEffect(() => {
     setYoutubeKeywords(null);
+    setSlideDataResetKey((key) => key + 1);
   }, [lessonId]);
 
   // Whenever a fresh lesson record comes in with an already-saved
@@ -297,6 +307,10 @@ function LessonDetail() {
   const imageGenerationAvailable = stepStatuses["image-generation"] !== "locked";
   const youtubeKeywordsAvailable = stepStatuses["youtube-keywords"] !== "locked";
   const slideshowDataAvailable = stepStatuses["slideshow-data"] !== "locked";
+  // The "slide-data" step's status comes from the shared lookup too: it
+  // unlocks once a slideshow deck has been saved on the lesson.
+  const savedSlideshowDeck = lessonRecord?.slideshowDeck ?? null;
+  const slideDataAvailable = stepStatuses["slide-data"] !== "locked";
   // Whether to surface the "go generate images" call-to-action from the
   // View Content step: only once content actually exists, only while the
   // user hasn't already completed that step, and only once a lesson
@@ -583,9 +597,43 @@ function LessonDetail() {
                       slideshow data is assembled from the lesson's finished content and images.
                     </p>
                   ) : (
-                    <SlideshowDeckGenerator
-                      lesson={lessonRecord}
-                      onLessonUpdated={(updated) => setLessonRecord(updated)}
+                    <div className="space-y-4">
+                      {slideDataAvailable ? (
+                        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-emerald-500/30 bg-emerald-500/5 px-4 py-3">
+                          <p className="text-sm text-foreground">
+                            The slideshow data is saved. Review each slide's data in the Slide Data
+                            step.
+                          </p>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setActiveTab("slide-data")}
+                          >
+                            Next: Slide Data <ArrowRight className="size-3.5" />
+                          </Button>
+                        </div>
+                      ) : null}
+                      <SlideshowDeckGenerator
+                        lesson={lessonRecord}
+                        onLessonUpdated={(updated) => {
+                          setLessonRecord(updated);
+                          setSlideDataResetKey((key) => key + 1);
+                        }}
+                      />
+                    </div>
+                  )
+                ) : null}
+
+                {activeTab === "slide-data" ? (
+                  !lessonRecord || !slideDataAvailable || !savedSlideshowDeck ? (
+                    <p className="text-sm text-muted-foreground">
+                      Paste and save the AI's response in the Generate Slideshow Data step first -
+                      each slide's data is shown here once the deck is saved.
+                    </p>
+                  ) : (
+                    <SlideDataViewer
+                      key={`${lessonId}-${slideDataResetKey}`}
+                      slideshowDeck={savedSlideshowDeck}
                     />
                   )
                 ) : null}
