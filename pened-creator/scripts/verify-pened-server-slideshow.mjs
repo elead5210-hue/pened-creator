@@ -47,8 +47,7 @@ const LESSON_ID_PATTERN = /^[^:\s/]+:[^\s/]+$/;
 const ELEMENT_TYPES = ["text", "image", "shape", "video"];
 const PENED_TOOLS_TIMEOUT_MS = 8000;
 const UNKNOWN_LESSON =
-  (env.VERIFY_UNKNOWN_LESSON ?? "").trim() ||
-  "00000000-0000-4000-8000-000000000000:n_verify_does_not_exist";
+  (env.VERIFY_UNKNOWN_LESSON ?? "").trim() || "00000000-0000-4000-8000-000000000000:n_verify_does_not_exist";
 
 // ---------------------------------------------------------------------------
 // Output. Everything goes through redact() so a secret can never be printed,
@@ -100,14 +99,11 @@ function snippet(text, max = 160) {
 
 function exitMisconfigured(message) {
   console.error(redact(`Configuration problem: ${message}`));
-  console.error(
-    "Run with PENED_SERVER_URL and PENED_API_KEY set. See the header of this script for the rest.",
-  );
+  console.error("Run with PENED_SERVER_URL and PENED_API_KEY set. See the header of this script for the rest.");
   process.exit(2);
 }
 
-if (typeof fetch !== "function")
-  exitMisconfigured("this script needs Node 18 or newer (global fetch).");
+if (typeof fetch !== "function") exitMisconfigured("this script needs Node 18 or newer (global fetch).");
 if (!BASE_RAW) exitMisconfigured("PENED_SERVER_URL is not set.");
 if (!API_KEY) exitMisconfigured("PENED_API_KEY is not set.");
 
@@ -125,9 +121,7 @@ const BASE = BASE_RAW.replace(/\/+$/, "");
 
 function requireLessonId(name, value) {
   if (!LESSON_ID_PATTERN.test(value)) {
-    exitMisconfigured(
-      `${name} is not in the <project_id>:<lesson_node_id> format (${LESSON_ID_PATTERN}).`,
-    );
+    exitMisconfigured(`${name} is not in the <project_id>:<lesson_node_id> format (${LESSON_ID_PATTERN}).`);
   }
   return value;
 }
@@ -162,8 +156,7 @@ async function request(method, path, { headers = {}, body, timeoutMs = 20000 } =
   };
 }
 
-const interactivePath = (lessonId) =>
-  `/api/lessons/${encodeURIComponent(lessonId)}/interactive-content`;
+const interactivePath = (lessonId) => `/api/lessons/${encodeURIComponent(lessonId)}/interactive-content`;
 const toolsHeaders = { "x-api-key": API_KEY, accept: "application/json" };
 
 function readLesson(lessonId, headers = toolsHeaders, pathSuffix = "") {
@@ -203,9 +196,7 @@ function cacheProblems(res) {
   const problems = [];
   const cacheControl = (res.headers.get("cache-control") ?? "").toLowerCase();
   if (!cacheControl.includes("no-store")) {
-    problems.push(
-      `Cache-Control is ${cacheControl ? `"${cacheControl}"` : "missing"}, expected no-store`,
-    );
+    problems.push(`Cache-Control is ${cacheControl ? `"${cacheControl}"` : "missing"}, expected no-store`);
   }
   const age = res.headers.get("age");
   if (age && Number(age) > 0) problems.push(`response was served from a cache (Age: ${age})`);
@@ -217,25 +208,21 @@ function isRedirect(res) {
 }
 
 function slideshowEntries(entries) {
-  return Array.isArray(entries)
-    ? entries.filter((e) => e && typeof e === "object" && e.tool === "slideshow")
-    : [];
+  return Array.isArray(entries) ? entries.filter((e) => e && typeof e === "object" && e.tool === "slideshow") : [];
 }
 
 /** The same structural rules pened-tools applies to a deck. */
 function deckProblems(deck) {
   const problems = [];
   if (!deck || typeof deck !== "object") return ["deck is not an object"];
-  if (!Array.isArray(deck.slides) || deck.slides.length === 0)
-    return ["slides is not a non-empty array"];
+  if (!Array.isArray(deck.slides) || deck.slides.length === 0) return ["slides is not a non-empty array"];
   deck.slides.forEach((slide, i) => {
     if (!slide || !Array.isArray(slide.elements)) {
       problems.push(`slides[${i}].elements is not an array`);
       return;
     }
     slide.elements.forEach((el, j) => {
-      if (!el || !ELEMENT_TYPES.includes(el.type))
-        problems.push(`slides[${i}].elements[${j}].type is invalid`);
+      if (!el || !ELEMENT_TYPES.includes(el.type)) problems.push(`slides[${i}].elements[${j}].type is invalid`);
     });
   });
   return problems.slice(0, 5);
@@ -270,15 +257,13 @@ async function check(name, fn) {
 // Common "200 with the right id" assertions for a read response.
 function expect200(res, lessonId) {
   const problems = [];
-  if (isRedirect(res))
-    return [`got a redirect (${res.status}); pened-tools does not follow redirects`];
+  if (isRedirect(res)) return [`got a redirect (${res.status}); pened-tools does not follow redirects`];
   if (res.status !== 200) return [`expected 200, got ${res.status}: ${snippet(res.text)}`];
   if (!(res.headers.get("content-type") ?? "").toLowerCase().includes("json")) {
     problems.push(`content-type is "${res.headers.get("content-type")}", expected JSON`);
   }
   if (!res.json || typeof res.json !== "object") return [...problems, "body is not a JSON object"];
-  if (res.json.id !== lessonId)
-    problems.push(`body id is ${JSON.stringify(res.json.id)}, expected the decoded lesson id`);
+  if (res.json.id !== lessonId) problems.push(`body id is ${JSON.stringify(res.json.id)}, expected the decoded lesson id`);
   if (!("interactiveContent" in res.json)) problems.push("body has no interactiveContent field");
   return [...problems, ...cacheProblems(res), ...findLeaks(res).map((p) => `body ${p}`)];
 }
@@ -294,18 +279,12 @@ async function runReadChecks() {
   if (baseUrl.protocol !== "https:" && !["localhost", "127.0.0.1"].includes(baseUrl.hostname)) {
     warn("PENED_SERVER_URL is not https. Use the public https URL that pened-tools will be given.");
   }
-  if (BASE_RAW.endsWith("/"))
-    warn(
-      "PENED_SERVER_URL has a trailing slash; the checks below strip it. Give pened-tools the value without one.",
-    );
+  if (BASE_RAW.endsWith("/")) warn("PENED_SERVER_URL has a trailing slash; the checks below strip it. Give pened-tools the value without one.");
 
   // 404 for an unknown lesson.
   await check("unknown lesson returns 404 with a clean JSON body and no-store", async () => {
     const res = await readLesson(requireLessonId("VERIFY_UNKNOWN_LESSON", UNKNOWN_LESSON));
-    if (isRedirect(res))
-      return [
-        `got a redirect (${res.status}). The public URL must answer directly, with no http-to-https or host redirect.`,
-      ];
+    if (isRedirect(res)) return [`got a redirect (${res.status}). The public URL must answer directly, with no http-to-https or host redirect.`];
     const problems = [];
     if (res.status !== 404) problems.push(`expected 404, got ${res.status}: ${snippet(res.text)}`);
     if (res.status === 404 && res.json === undefined) problems.push("404 body is not JSON");
@@ -322,10 +301,7 @@ async function runReadChecks() {
 
   await check("wrong x-api-key returns 401 or 403", async () => {
     const wrong = `wrong-${Math.random().toString(36).slice(2)}-${Date.now()}`;
-    const res = await readLesson(UNKNOWN_LESSON, {
-      "x-api-key": wrong,
-      accept: "application/json",
-    });
+    const res = await readLesson(UNKNOWN_LESSON, { "x-api-key": wrong, accept: "application/json" });
     const problems = [];
     if (![401, 403].includes(res.status)) problems.push(`expected 401 or 403, got ${res.status}`);
     return [...problems, ...findLeaks(res, [wrong]).map((p) => `body ${p}`)];
@@ -335,29 +311,19 @@ async function runReadChecks() {
   const withSlideshow = (env.VERIFY_LESSON_WITH_SLIDESHOW ?? "").trim();
   if (withSlideshow) {
     requireLessonId("VERIFY_LESSON_WITH_SLIDESHOW", withSlideshow);
-    await check(
-      "lesson with a slideshow returns 200, the right shape and exactly one slideshow entry",
-      async () => {
-        const res = await readLesson(withSlideshow);
-        const problems = expect200(res, withSlideshow);
-        if (problems.length > 0) return problems;
-        const entries = slideshowEntries(res.json.interactiveContent);
-        if (!Array.isArray(res.json.interactiveContent))
-          return ["interactiveContent is not an array"];
-        if (entries.length === 0) return ['no entry with tool "slideshow"'];
-        const out = [];
-        if (entries.length > 1)
-          out.push(
-            `${entries.length} slideshow entries; pened-tools uses the first, so there must be only one`,
-          );
-        out.push(...deckProblems(entries[0].data).map((p) => `deck: ${p}`));
-        if (res.elapsedMs > PENED_TOOLS_TIMEOUT_MS)
-          out.push(
-            `took ${res.elapsedMs}ms, over pened-tools' ${PENED_TOOLS_TIMEOUT_MS}ms timeout`,
-          );
-        return out;
-      },
-    );
+    await check("lesson with a slideshow returns 200, the right shape and exactly one slideshow entry", async () => {
+      const res = await readLesson(withSlideshow);
+      const problems = expect200(res, withSlideshow);
+      if (problems.length > 0) return problems;
+      const entries = slideshowEntries(res.json.interactiveContent);
+      if (!Array.isArray(res.json.interactiveContent)) return ["interactiveContent is not an array"];
+      if (entries.length === 0) return ["no entry with tool \"slideshow\""];
+      const out = [];
+      if (entries.length > 1) out.push(`${entries.length} slideshow entries; pened-tools uses the first, so there must be only one`);
+      out.push(...deckProblems(entries[0].data).map((p) => `deck: ${p}`));
+      if (res.elapsedMs > PENED_TOOLS_TIMEOUT_MS) out.push(`took ${res.elapsedMs}ms, over pened-tools' ${PENED_TOOLS_TIMEOUT_MS}ms timeout`);
+      return out;
+    });
   } else {
     skip("lesson with a slideshow", "VERIFY_LESSON_WITH_SLIDESHOW not set");
   }
@@ -372,9 +338,7 @@ async function runReadChecks() {
       if (problems.length > 0) return problems;
       return res.json.interactiveContent === null
         ? []
-        : [
-            `interactiveContent is ${snippet(JSON.stringify(res.json.interactiveContent))}, expected null (not [] and not omitted)`,
-          ];
+        : [`interactiveContent is ${snippet(JSON.stringify(res.json.interactiveContent))}, expected null (not [] and not omitted)`];
     });
   } else {
     skip("lesson with null content", "VERIFY_LESSON_NULL_CONTENT not set");
@@ -384,19 +348,13 @@ async function runReadChecks() {
   const noSlideshow = (env.VERIFY_LESSON_NO_SLIDESHOW ?? "").trim();
   if (noSlideshow) {
     requireLessonId("VERIFY_LESSON_NO_SLIDESHOW", noSlideshow);
-    await check(
-      "lesson with other entries but no slideshow returns 200 and no slideshow entry",
-      async () => {
-        const res = await readLesson(noSlideshow);
-        const problems = expect200(res, noSlideshow);
-        if (problems.length > 0) return problems;
-        if (!Array.isArray(res.json.interactiveContent))
-          return ["interactiveContent is not an array"];
-        return slideshowEntries(res.json.interactiveContent).length === 0
-          ? []
-          : ["found a slideshow entry"];
-      },
-    );
+    await check("lesson with other entries but no slideshow returns 200 and no slideshow entry", async () => {
+      const res = await readLesson(noSlideshow);
+      const problems = expect200(res, noSlideshow);
+      if (problems.length > 0) return problems;
+      if (!Array.isArray(res.json.interactiveContent)) return ["interactiveContent is not an array"];
+      return slideshowEntries(res.json.interactiveContent).length === 0 ? [] : ["found a slideshow entry"];
+    });
   } else {
     skip("lesson with no slideshow entry", "VERIFY_LESSON_NO_SLIDESHOW not set");
   }
@@ -406,10 +364,7 @@ async function runReadChecks() {
   if (colonId) {
     requireLessonId("VERIFY_LESSON_COLON_ID", colonId);
     const nodeId = colonId.slice(colonId.indexOf(":") + 1);
-    if (!nodeId.includes(":"))
-      exitMisconfigured(
-        "VERIFY_LESSON_COLON_ID must have extra colons in the node id, e.g. <project-id>:n_a:b:c.",
-      );
+    if (!nodeId.includes(":")) exitMisconfigured("VERIFY_LESSON_COLON_ID must have extra colons in the node id, e.g. <project-id>:n_a:b:c.");
     await check("colon id sent as %3A (with extra colons in the node id) is matched", async () => {
       const path = interactivePath(colonId);
       if (!path.includes("%3A")) return ["the request path does not contain %3A (script bug)"];
@@ -424,9 +379,7 @@ async function runReadChecks() {
   await check("trailing-slash request does not redirect", async () => {
     const res = await readLesson(UNKNOWN_LESSON, toolsHeaders, "/");
     return isRedirect(res)
-      ? [
-          `got ${res.status}. A trailing-slash request must be served directly or 404, never redirected.`,
-        ]
+      ? [`got ${res.status}. A trailing-slash request must be served directly or 404, never redirected.`]
       : [];
   });
 
@@ -439,9 +392,7 @@ async function runReadChecks() {
 // ---------------------------------------------------------------------------
 
 function buildDeck(marker, targetKb) {
-  const paragraph =
-    `${marker} `.repeat(40) +
-    "Lorem ipsum dolor sit amet, consectetur adipiscing elit. ".repeat(20);
+  const paragraph = `${marker} `.repeat(40) + "Lorem ipsum dolor sit amet, consectetur adipiscing elit. ".repeat(20);
   const slides = [];
   let size = 0;
   let index = 0;
@@ -482,8 +433,7 @@ async function runWriteRoundTrip() {
     return;
   }
   const lessonId = requireLessonId("VERIFY_WRITE_LESSON", (env.VERIFY_WRITE_LESSON ?? "").trim());
-  if (!SESSION_COOKIE)
-    exitMisconfigured("VERIFY_SESSION_COOKIE is required for the write round trip.");
+  if (!SESSION_COOKIE) exitMisconfigured("VERIFY_SESSION_COOKIE is required for the write round trip.");
 
   const targetKb = Number(env.VERIFY_DECK_KB) > 0 ? Number(env.VERIFY_DECK_KB) : 1500;
   const lessonPath = `/api/lessons/${encodeURIComponent(lessonId)}`;
@@ -493,10 +443,7 @@ async function runWriteRoundTrip() {
 
   const original = await readLesson(lessonId);
   if (original.status !== 200 || !original.json) {
-    fail(
-      "read the lesson before writing",
-      `expected 200, got ${original.status}: ${snippet(original.text)}`,
-    );
+    fail("read the lesson before writing", `expected 200, got ${original.status}: ${snippet(original.text)}`);
     log("");
     return;
   }
@@ -505,10 +452,7 @@ async function runWriteRoundTrip() {
 
   const recordRes = await request("GET", lessonPath, { headers: sessionHeaders });
   if (recordRes.status !== 200 || !recordRes.json || typeof recordRes.json !== "object") {
-    fail(
-      "load the lesson record with the session cookie",
-      `expected 200, got ${recordRes.status}. Is VERIFY_SESSION_COOKIE valid?`,
-    );
+    fail("load the lesson record with the session cookie", `expected 200, got ${recordRes.status}. Is VERIFY_SESSION_COOKIE valid?`);
     log("");
     return;
   }
@@ -529,13 +473,8 @@ async function runWriteRoundTrip() {
 
     await check("save a large deck", async () => {
       const res = await save([...others, { tool: "slideshow", data: deckA }]);
-      if (res.status === 413)
-        return [
-          "413: the body size limit is below the deck size. Raise it on PUT /api/lessons/:id (and any proxy).",
-        ];
-      return res.status >= 200 && res.status < 300
-        ? []
-        : [`expected 2xx, got ${res.status}: ${snippet(res.text)}`];
+      if (res.status === 413) return ["413: the body size limit is below the deck size. Raise it on PUT /api/lessons/:id (and any proxy)."];
+      return res.status >= 200 && res.status < 300 ? [] : [`expected 2xx, got ${res.status}: ${snippet(res.text)}`];
     });
 
     await check("large deck reads back unchanged, alone, within pened-tools' timeout", async () => {
@@ -545,41 +484,30 @@ async function runWriteRoundTrip() {
       const entries = slideshowEntries(res.json.interactiveContent);
       const out = [];
       if (entries.length !== 1) out.push(`${entries.length} slideshow entries, expected exactly 1`);
-      if (entries[0] && canonical(entries[0].data) !== canonical(deckA))
-        out.push("the deck read back differs from the deck saved (truncated or altered)");
-      const others2 = (res.json.interactiveContent ?? []).filter(
-        (e) => !(e && e.tool === "slideshow"),
-      );
+      if (entries[0] && canonical(entries[0].data) !== canonical(deckA)) out.push("the deck read back differs from the deck saved (truncated or altered)");
+      const others2 = (res.json.interactiveContent ?? []).filter((e) => !(e && e.tool === "slideshow"));
       if (canonical(others2) !== canonical(others)) out.push("other tools' entries changed");
-      if (res.elapsedMs > PENED_TOOLS_TIMEOUT_MS)
-        out.push(
-          `read took ${res.elapsedMs}ms, over pened-tools' ${PENED_TOOLS_TIMEOUT_MS}ms timeout`,
-        );
+      if (res.elapsedMs > PENED_TOOLS_TIMEOUT_MS) out.push(`read took ${res.elapsedMs}ms, over pened-tools' ${PENED_TOOLS_TIMEOUT_MS}ms timeout`);
       return out;
     });
 
     await check("saving again replaces the slideshow entry instead of appending", async () => {
       const put = await save([...others, { tool: "slideshow", data: deckB }]);
-      if (put.status < 200 || put.status >= 300)
-        return [`save failed: ${put.status}: ${snippet(put.text)}`];
+      if (put.status < 200 || put.status >= 300) return [`save failed: ${put.status}: ${snippet(put.text)}`];
       const res = await readLesson(lessonId);
       const problems = expect200(res, lessonId);
       if (problems.length > 0) return problems;
       const entries = slideshowEntries(res.json.interactiveContent);
       const out = [];
-      if (entries.length !== 1)
-        out.push(`${entries.length} slideshow entries after the second save, expected exactly 1`);
-      if (entries[0] && canonical(entries[0].data) !== canonical(deckB))
-        out.push("the slideshow entry is not the second deck (the first is still being served)");
+      if (entries.length !== 1) out.push(`${entries.length} slideshow entries after the second save, expected exactly 1`);
+      if (entries[0] && canonical(entries[0].data) !== canonical(deckB)) out.push("the slideshow entry is not the second deck (the first is still being served)");
       return out;
     });
   } finally {
     await check("restore the lesson's original interactiveContent", async () => {
       const res = await save(originalEntries);
       if (res.status < 200 || res.status >= 300) {
-        return [
-          `restore failed (${res.status}). Restore lesson ${lessonId} by hand. Its original interactiveContent had ${(originalEntries ?? []).length} entries.`,
-        ];
+        return [`restore failed (${res.status}). Restore lesson ${lessonId} by hand. Its original interactiveContent had ${(originalEntries ?? []).length} entries.`];
       }
       const back = await readLesson(lessonId);
       return canonical(back.json?.interactiveContent ?? null) === canonical(originalEntries)
@@ -603,13 +531,9 @@ async function main() {
     fail("run the checks", err instanceof Error ? `${err.name}: ${err.message}` : String(err));
   }
 
-  log(
-    `${results.pass} passed, ${results.fail} failed, ${results.skip} skipped, ${results.warn} warnings`,
-  );
+  log(`${results.pass} passed, ${results.fail} failed, ${results.skip} skipped, ${results.warn} warnings`);
   log("");
-  log(
-    "Not checked here (needs the pened-server code): that PENED_API_KEY is a separate read-only key",
-  );
+  log("Not checked here (needs the pened-server code): that PENED_API_KEY is a separate read-only key");
   log("that cannot write, and that no CORS change was made for this feature.");
   process.exit(results.fail > 0 ? 1 : 0);
 }

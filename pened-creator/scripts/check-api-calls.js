@@ -24,11 +24,9 @@
  *      request needs something those helpers don't offer.
  *
  * Calls like handler.fetch(...) (a method on another object) are not
- * fetch() the global, so they are ignored. Definitions named fetch, such as
- * `async fetch(request, env, ctx) {` on the export default object in
- * src/server.ts, declare a method rather than call the global, so they are
- * skipped too. Comments and the contents of strings are ignored when looking
- * for calls, so mentioning fetch( in a comment or a message is fine.
+ * fetch() the global, so they are ignored. Comments and the contents of
+ * strings are ignored when looking for calls, so mentioning fetch( in a
+ * comment or a message is fine.
  *
  * It prints the file, the line number and the rule for each problem. It never
  * prints the contents of a line. Exit code 0 means clean, 1 means violations.
@@ -178,28 +176,6 @@ function firstArgumentRange(masked, openParenEnd) {
   return [openParenEnd, masked.length];
 }
 
-/**
- * Whether the `fetch(` at this position declares a function or method rather
- * than calling the global. True when it is preceded by async/function/static/
- * get/set, or when its parameter list is followed by `{` (a method body).
- * A real call is never followed directly by `{`.
- */
-function isFetchDefinition(masked, callStart, openParenEnd) {
-  const before = masked.slice(0, callStart).trimEnd();
-  if (/(?:^|[^\w$.])(?:async|function\*?|static|get|set)$/.test(before)) return true;
-
-  let depth = 0;
-  for (let i = openParenEnd; i < masked.length; i += 1) {
-    const ch = masked[i];
-    if (ch === "(" || ch === "[" || ch === "{") depth += 1;
-    else if (ch === ")" || ch === "]" || ch === "}") {
-      if (depth === 0) return /^\s*\{/.test(masked.slice(i + 1));
-      depth -= 1;
-    }
-  }
-  return false;
-}
-
 /** Finds violations in one file. Returns [{ line, rule }]. */
 function checkSource(source) {
   const { stripped, masked } = scan(source);
@@ -216,10 +192,6 @@ function checkSource(source) {
     const [argStart, argEnd] = firstArgumentRange(masked, openParenEnd);
     const firstArg = stripped.slice(argStart, argEnd).trim();
     const line = lineOf(source, callStart);
-
-    // A method or function named fetch that is being DEFINED (for example
-    // `async fetch(request) {` in src/server.ts), not a call to the global.
-    if (isFetchDefinition(masked, callStart, openParenEnd)) continue;
 
     if (/^apiUrl\s*\(/.test(firstArg)) continue;
 
@@ -275,28 +247,7 @@ function main() {
     process.exit(1);
   }
 
-  console.log(
-    `check-api-calls: OK (${scanned} files scanned, no API calls bypass the shared client).`,
-  );
+  console.log(`check-api-calls: OK (${scanned} files scanned, no API calls bypass the shared client).`);
 }
 
-/**
- * Whether this file was started directly (`node scripts/check-api-calls.js`)
- * rather than imported, for example by the guard's own tests, which must be
- * able to load checkSource without scanning src/ or exiting the process.
- */
-function isEntryPoint() {
-  const entry = process.argv[1];
-  if (!entry) return false;
-  try {
-    return fs.realpathSync(entry) === fs.realpathSync(fileURLToPath(import.meta.url));
-  } catch {
-    return path.resolve(entry) === fileURLToPath(import.meta.url);
-  }
-}
-
-export { checkSource };
-
-if (isEntryPoint()) {
-  main();
-}
+main();

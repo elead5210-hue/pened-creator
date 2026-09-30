@@ -1,3 +1,4 @@
+
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AlertCircle, Download, Trash2, TreeDeciduous } from "lucide-react";
@@ -16,10 +17,7 @@ import {
 } from "@/lib/curriculum/shared/db";
 import { ApiError } from "@/lib/curriculum/shared/apiClient";
 import { expand, LESSON_NODE_TYPE, type CurriculumNode } from "@/lib/curriculum/shared/schema";
-import {
-  computeLessonPipelineStage,
-  type PipelineStage,
-} from "@/lib/curriculum/shared/lessonPipelineStatus";
+import { computeLessonPipelineStage, type PipelineStage } from "@/lib/curriculum/shared/lessonPipelineStatus";
 import { useTreeExpandedState } from "@/hooks/use-tree-expanded-state";
 import { requireAuth } from "@/lib/auth/routeGuard";
 
@@ -167,11 +165,7 @@ function Index() {
   // to the tree's depth-based default. `prune` is called below after every
   // successful load so entries for nodes that no longer exist (deleted,
   // cleared, or replaced by a re-import) don't linger in storage forever.
-  const {
-    expandedIds,
-    toggle: toggleTreeExpanded,
-    prune: pruneTreeExpanded,
-  } = useTreeExpandedState();
+  const { expandedIds, toggle: toggleTreeExpanded, prune: pruneTreeExpanded } = useTreeExpandedState();
 
   const load = useCallback(async () => {
     try {

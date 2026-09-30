@@ -1,3 +1,4 @@
+
 import type { ToolInputSchema } from "../shared/apiClient";
 import type { Tool } from "@/lib/tools/toolsClient";
 import { SLIDESHOW_TOOL_ID } from "./slideshowInteractiveContent";
@@ -156,13 +157,7 @@ function validateAgainstSchema(
 
     if (schema.items) {
       value.forEach((item, index) => {
-        validateAgainstSchema(
-          item,
-          schema.items as ToolInputSchema,
-          `${path}[${index}]`,
-          errors,
-          blockIndex,
-        );
+        validateAgainstSchema(item, schema.items as ToolInputSchema, `${path}[${index}]`, errors, blockIndex);
       });
     }
   }
@@ -238,13 +233,7 @@ function validateBlock(
     return;
   }
 
-  validateAgainstSchema(
-    blockObject.data,
-    toolDef.inputSchema as unknown as ToolInputSchema,
-    "data",
-    errors,
-    blockIndex,
-  );
+  validateAgainstSchema(blockObject.data, toolDef.inputSchema as ToolInputSchema, "data", errors, blockIndex);
 
   if (
     !("slide" in blockObject) ||
@@ -260,13 +249,7 @@ function validateBlock(
     return;
   }
 
-  validateAgainstSchema(
-    (blockObject as { slide?: unknown }).slide,
-    SLIDE_SCHEMA,
-    "slide",
-    errors,
-    blockIndex,
-  );
+  validateAgainstSchema((blockObject as { slide?: unknown }).slide, SLIDE_SCHEMA, "slide", errors, blockIndex);
 }
 
 /**
@@ -290,26 +273,14 @@ export function validateGeneratedContent(
   if (!Array.isArray(parsedResponse)) {
     return {
       valid: false,
-      errors: [
-        {
-          blockIndex: -1,
-          path: "",
-          message: "The AI response must be a JSON array of content blocks.",
-        },
-      ],
+      errors: [{ blockIndex: -1, path: "", message: "The AI response must be a JSON array of content blocks." }],
     };
   }
 
   if (parsedResponse.length === 0) {
     return {
       valid: false,
-      errors: [
-        {
-          blockIndex: -1,
-          path: "",
-          message: "The AI response must contain at least one content block.",
-        },
-      ],
+      errors: [{ blockIndex: -1, path: "", message: "The AI response must contain at least one content block." }],
     };
   }
 
@@ -331,8 +302,6 @@ export function validateGeneratedContent(
  */
 export function formatContentErrors(errors: ContentError[]): string {
   return errors
-    .map((error) =>
-      error.blockIndex >= 0 ? `Block ${error.blockIndex}: ${error.message}` : error.message,
-    )
+    .map((error) => (error.blockIndex >= 0 ? `Block ${error.blockIndex}: ${error.message}` : error.message))
     .join("\n");
 }

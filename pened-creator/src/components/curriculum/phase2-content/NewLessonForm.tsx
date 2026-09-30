@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -90,9 +91,7 @@ export function NewLessonForm({ initialLesson, onSaved, onCancel }: NewLessonFor
       return err.message;
     }
     if (err instanceof Error) return err.message;
-    return isEditing
-      ? "Failed to save changes. Please try again."
-      : "Failed to save lesson. Please try again.";
+    return isEditing ? "Failed to save changes. Please try again." : "Failed to save lesson. Please try again.";
   }
 
   /**
@@ -186,19 +185,13 @@ export function NewLessonForm({ initialLesson, onSaved, onCancel }: NewLessonFor
         </div>
 
         {summaryError ? (
-          <div
-            role="alert"
-            className="space-y-1 rounded-md border border-destructive/50 bg-destructive/10 p-3"
-          >
+          <div role="alert" className="space-y-1 rounded-md border border-destructive/50 bg-destructive/10 p-3">
             <p className="text-xs font-medium text-destructive">{summaryError}</p>
           </div>
         ) : null}
 
         {hasFieldErrors ? (
-          <div
-            role="alert"
-            className="space-y-2 rounded-md border border-destructive/50 bg-destructive/10 p-3"
-          >
+          <div role="alert" className="space-y-2 rounded-md border border-destructive/50 bg-destructive/10 p-3">
             <p className="text-xs font-medium text-destructive">
               {fieldErrors.length === 1
                 ? "1 problem was found with the pasted JSON:"

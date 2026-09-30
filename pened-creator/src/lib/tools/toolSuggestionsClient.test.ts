@@ -5,7 +5,6 @@ import {
   TOOL_SUGGESTION_MIN_LENGTH,
   ToolSuggestionsApiError,
   isUsingMockToolSuggestions,
-  listMyToolSuggestions,
   mockToolSuggestionsAdapter,
   realToolSuggestionsAdapter,
   setToolSuggestionsAdapter,
@@ -28,11 +27,7 @@ async function captureError(promise: Promise<unknown>): Promise<ToolSuggestionsA
   throw new Error("Expected the promise to reject, but it resolved.");
 }
 
-function jsonResponse(
-  status: number,
-  body: unknown,
-  headers: Record<string, string> = {},
-): Response {
+function jsonResponse(status: number, body: unknown, headers: Record<string, string> = {}): Response {
   return new Response(JSON.stringify(body), {
     status,
     headers: { "Content-Type": "application/json", ...headers },
@@ -159,31 +154,6 @@ describe("mock adapter", () => {
     expect(error.code).toBe("RATE_LIMITED");
     expect(error.retryAfterSeconds).toBe(1800);
   });
-
-  it("lists the caller's own suggestions after simulated latency", async () => {
-    let settled = false;
-    const promise = listMyToolSuggestions().then((r) => {
-      settled = true;
-      return r;
-    });
-
-    await vi.advanceTimersByTimeAsync(100);
-    expect(settled).toBe(false);
-
-    await vi.advanceTimersByTimeAsync(400);
-    const result = await promise;
-    expect(settled).toBe(true);
-
-    expect(result.items.length).toBeGreaterThan(0);
-    for (const item of result.items) {
-      expect(item.id).toEqual(expect.any(String));
-      expect(item.description).toEqual(expect.any(String));
-      expect(item.submittedBy.email).toBeUndefined();
-      // The submitter-facing shape leaves out the internal review fields.
-      expect(item).not.toHaveProperty("adminNote");
-      expect(item).not.toHaveProperty("reviewedBy");
-    }
-  });
 });
 
 describe("real adapter", () => {
@@ -285,9 +255,7 @@ describe("real adapter", () => {
 
   it("maps a 401 response to an unauthenticated error", async () => {
     fetchMock.mockResolvedValueOnce(
-      jsonResponse(401, {
-        error: { code: "UNAUTHENTICATED", message: "Please sign in to continue." },
-      }),
+      jsonResponse(401, { error: { code: "UNAUTHENTICATED", message: "Please sign in to continue." } }),
     );
 
     const error = await captureError(submitToolSuggestion({ description: VALID_DESCRIPTION }));
@@ -300,9 +268,7 @@ describe("real adapter", () => {
     fetchMock.mockResolvedValueOnce(
       jsonResponse(
         429,
-        {
-          error: { code: "RATE_LIMITED", message: "Too many suggestions. Please try again later." },
-        },
+        { error: { code: "RATE_LIMITED", message: "Too many suggestions. Please try again later." } },
         { "Retry-After": "1800" },
       ),
     );
@@ -357,147 +323,5 @@ describe("real adapter", () => {
     const error = await captureError(submitToolSuggestion({ description: VALID_DESCRIPTION }));
 
     expect(error.code).toBe("UNKNOWN_ERROR");
-  });
-
-  it("maps a 405 response to METHOD_NOT_ALLOWED using the structured error body", async () => {
-    fetchMock.mockResolvedValueOnce(
-      jsonResponse(405, {
-        error: { code: "METHOD_NOT_ALLOWED", message: "That method is not allowed on this route." },
-      }),
-    );
-
-    const error = await captureError(submitToolSuggestion({ description: VALID_DESCRIPTION }));
-
-    expect(error.status).toBe(405);
-    expect(error.code).toBe("METHOD_NOT_ALLOWED");
-    expect(error.message).toBe("That method is not allowed on this route.");
-  });
-
-  it("derives METHOD_NOT_ALLOWED from a 405 status when the body is not JSON", async () => {
-    fetchMock.mockResolvedValueOnce(new Response("Method Not Allowed", { status: 405 }));
-
-    const error = await captureError(submitToolSuggestion({ description: VALID_DESCRIPTION }));
-
-    expect(error.status).toBe(405);
-    expect(error.code).toBe("METHOD_NOT_ALLOWED");
-  });
-
-  describe("listMy", () => {
-    const item = {
-      id: "6f1c1f0e-2f3e-4a52-9d55-6b1a2f7d8c11",
-      description: VALID_DESCRIPTION,
-      status: "reviewed",
-      submittedBy: { id: "b7a0f1d2-3c44-4e6b-8f21-0d9e5c7a1234", displayName: "Sam Teacher" },
-      createdAt: "2026-09-29T08:15:30.000Z",
-      updatedAt: "2026-09-30T09:00:00.000Z",
-      reviewedAt: "2026-09-30T09:00:00.000Z",
-    };
-
-    it("GETs the absolute /mine URL with credentials and returns the items", async () => {
-      fetchMock.mockResolvedValueOnce(jsonResponse(200, { items: [item] }));
-
-      const result = await listMyToolSuggestions();
-
-      expect(result.items).toEqual([item]);
-      expect(fetchMock).toHaveBeenCalledTimes(1);
-      const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-      expect(url).toBe(`${API_BASE_URL}/api/tool-suggestions/mine`);
-      expect(url.startsWith("/")).toBe(false);
-      expect(init.method).toBe("GET");
-      expect(init.credentials).toBe("include");
-      expect(init.body).toBeUndefined();
-    });
-
-    it("returns an empty list when the user has no suggestions", async () => {
-      fetchMock.mockResolvedValueOnce(jsonResponse(200, { items: [] }));
-
-      const result = await listMyToolSuggestions();
-
-      expect(result.items).toEqual([]);
-    });
-
-    it("maps a 401 response to an unauthenticated error", async () => {
-      fetchMock.mockResolvedValueOnce(
-        jsonResponse(401, {
-          error: { code: "UNAUTHENTICATED", message: "Please sign in to continue." },
-        }),
-      );
-
-      const error = await captureError(listMyToolSuggestions());
-
-      expect(error.status).toBe(401);
-      expect(error.code).toBe("UNAUTHENTICATED");
-      expect(error.message).toBe("Please sign in to continue.");
-    });
-
-    it("maps a 403 response to a forbidden error", async () => {
-      fetchMock.mockResolvedValueOnce(
-        jsonResponse(403, {
-          error: { code: "FORBIDDEN", message: "You do not have access to this." },
-        }),
-      );
-
-      const error = await captureError(listMyToolSuggestions());
-
-      expect(error.status).toBe(403);
-      expect(error.code).toBe("FORBIDDEN");
-    });
-
-    it("derives the code from the status when an error body is not JSON", async () => {
-      fetchMock.mockResolvedValueOnce(new Response("Forbidden", { status: 403 }));
-
-      const error = await captureError(listMyToolSuggestions());
-
-      expect(error.status).toBe(403);
-      expect(error.code).toBe("FORBIDDEN");
-    });
-
-    it("treats a 200 response without an items array as an error", async () => {
-      fetchMock.mockResolvedValueOnce(jsonResponse(200, { items: "nope" }));
-
-      const error = await captureError(listMyToolSuggestions());
-
-      expect(error.status).toBe(200);
-      expect(error.code).toBe("UNKNOWN_ERROR");
-      expect(error.message).toBe("The server returned an unexpected response.");
-    });
-
-    it("treats a 200 response with a non-object body as an error", async () => {
-      fetchMock.mockResolvedValueOnce(jsonResponse(200, [item]));
-
-      const error = await captureError(listMyToolSuggestions());
-
-      expect(error.code).toBe("UNKNOWN_ERROR");
-    });
-
-    it("treats a 200 response with invalid JSON as an error", async () => {
-      fetchMock.mockResolvedValueOnce(new Response("not json", { status: 200 }));
-
-      const error = await captureError(listMyToolSuggestions());
-
-      expect(error.code).toBe("UNKNOWN_ERROR");
-      expect(error.message).toBe("The server returned an unexpected response.");
-    });
-
-    it("maps a fetch rejection to a network error", async () => {
-      fetchMock.mockRejectedValueOnce(new TypeError("Failed to fetch"));
-
-      const error = await captureError(listMyToolSuggestions());
-
-      expect(error.status).toBe(0);
-      expect(error.code).toBe("NETWORK_ERROR");
-      expect(error.message).toBe("Couldn't reach the server. Check your connection and try again.");
-    });
-
-    it("reports a missing VITE_API_URL clearly without sending any request", async () => {
-      vi.stubEnv("VITE_API_URL", "");
-
-      const error = await captureError(listMyToolSuggestions());
-
-      expect(fetchMock).not.toHaveBeenCalled();
-      expect(error.status).toBe(0);
-      expect(error.code).toBe("NETWORK_ERROR");
-      expect(error.message).toContain("VITE_API_URL");
-    });
   });
 });

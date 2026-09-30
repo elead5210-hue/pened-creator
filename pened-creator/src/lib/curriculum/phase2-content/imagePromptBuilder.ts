@@ -7,7 +7,9 @@
  */
 
 /** Loosely-typed shape of a lesson's saved generated content. */
-export type GeneratedContentJson = Record<string, unknown> | Record<string, unknown>[];
+export type GeneratedContentJson =
+  | Record<string, unknown>
+  | Record<string, unknown>[];
 
 const MIN_ALLOWED_IMAGES = 1;
 const MAX_ALLOWED_IMAGES = 30;

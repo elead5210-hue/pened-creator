@@ -40,14 +40,7 @@ const ALLOWED_VITE_NAMES = new Set([
   // Add public identifiers here, with the reason. Empty on purpose.
 ]);
 
-const SKIP_DIRS = new Set([
-  "node_modules",
-  ".git",
-  ".output",
-  ".vite",
-  "dist",
-  ".routes-check-tmp",
-]);
+const SKIP_DIRS = new Set(["node_modules", ".git", ".output", ".vite", "dist", ".routes-check-tmp"]);
 const CODE_EXTENSIONS = new Set([".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".css", ".html"]);
 
 const TOOLS_SECRET_NAME = /PENED_(?:API_KEY|SERVER_URL)/i;
@@ -155,11 +148,7 @@ function codeLines(text, hashComments) {
 const violations = [];
 
 function report(file, lineNumber, rule) {
-  violations.push({
-    file: path.relative(ROOT, file).split(path.sep).join("/"),
-    line: lineNumber,
-    rule,
-  });
+  violations.push({ file: path.relative(ROOT, file).split(path.sep).join("/"), line: lineNumber, rule });
 }
 
 function scanFile(file) {
@@ -213,6 +202,4 @@ if (violations.length > 0) {
   process.exit(1);
 }
 
-console.log(
-  `check-no-client-secrets: OK (${files.length} files scanned, no client-side secrets found).`,
-);
+console.log(`check-no-client-secrets: OK (${files.length} files scanned, no client-side secrets found).`);

@@ -157,8 +157,7 @@ export function ToolSuggestionModal({ open, onOpenChange, onSubmitted }: ToolSug
         <DialogHeader>
           <DialogTitle>Suggest a tool</DialogTitle>
           <DialogDescription>
-            Describe the tool you would like to see. What should it do, and how would it help your
-            work?
+            Describe the tool you would like to see. What should it do, and how would it help your work?
           </DialogDescription>
         </DialogHeader>
 
@@ -170,9 +169,7 @@ export function ToolSuggestionModal({ open, onOpenChange, onSubmitted }: ToolSug
           >
             <CheckCircle2 className="size-10 text-primary" aria-hidden="true" />
             <p className="text-sm font-medium">Suggestion sent</p>
-            <p className="text-sm text-muted-foreground">
-              Thanks for helping us improve. An admin will review it.
-            </p>
+            <p className="text-sm text-muted-foreground">Thanks for helping us improve. An admin will review it.</p>
           </div>
         ) : (
           <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">

@@ -1,3 +1,4 @@
+
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
@@ -44,9 +45,7 @@ function describeLoadError(err: unknown): string {
       ? "Couldn't reach the server. Check your connection and try again."
       : err.message;
   }
-  return err instanceof Error
-    ? err.message
-    : "Something went wrong while loading the tools registry.";
+  return err instanceof Error ? err.message : "Something went wrong while loading the tools registry.";
 }
 
 /**
@@ -84,10 +83,7 @@ function ToolsPage() {
         </header>
 
         <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-[10rem_minmax(0,1fr)] md:items-start">
-          <nav
-            aria-label="Tool Registry sections"
-            className="flex flex-row gap-1 overflow-x-auto md:flex-col md:overflow-x-visible"
-          >
+          <nav aria-label="Tool Registry sections" className="flex flex-row gap-1 overflow-x-auto md:flex-col md:overflow-x-visible">
             {TOOLS_PAGE_TABS.map((tab) => (
               <button
                 key={tab.value}
@@ -116,9 +112,7 @@ function ToolsPage() {
                     <p className="text-sm font-medium text-destructive">
                       Couldn't load the tools registry
                     </p>
-                    <p className="text-sm text-muted-foreground">
-                      {describeLoadError(toolsQuery.error)}
-                    </p>
+                    <p className="text-sm text-muted-foreground">{describeLoadError(toolsQuery.error)}</p>
                     <Button
                       variant="outline"
                       size="sm"
@@ -129,9 +123,7 @@ function ToolsPage() {
                     </Button>
                   </div>
                 ) : toolsQuery.data.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    No tools have been registered yet.
-                  </p>
+                  <p className="text-sm text-muted-foreground">No tools have been registered yet.</p>
                 ) : (
                   toolsQuery.data.map((tool) => <ToolRegistryCard key={tool.id} tool={tool} />)
                 )}

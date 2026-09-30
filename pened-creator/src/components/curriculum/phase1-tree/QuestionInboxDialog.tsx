@@ -1,3 +1,4 @@
+
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import {
@@ -64,7 +65,9 @@ interface QuestionInboxDialogProps {
  * server rejected. */
 function describeLoadError(err: unknown): string {
   if (err instanceof ApiError) {
-    return err.status === 0 ? "Couldn't reach the server. Check your connection." : err.message;
+    return err.status === 0
+      ? "Couldn't reach the server. Check your connection."
+      : err.message;
   }
   return err instanceof Error ? err.message : "Something went wrong.";
 }
@@ -95,9 +98,7 @@ function QuestionCard({ question, projectId, tree, onUpdated, isHighlighted }: Q
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [selectedNodeId, setSelectedNodeId] = useState<string | undefined>(
-    question.confirmedNodeId,
-  );
+  const [selectedNodeId, setSelectedNodeId] = useState<string | undefined>(question.confirmedNodeId);
   const [isConfirming, setIsConfirming] = useState(false);
   const [confirmError, setConfirmError] = useState<string | null>(null);
   const [isRemoving, setIsRemoving] = useState(false);
@@ -147,7 +148,7 @@ function QuestionCard({ question, projectId, tree, onUpdated, isHighlighted }: Q
       setError(
         firstIssue
           ? `Response didn't match the expected shape: ${firstIssue.path.join(".") || "(root)"} - ${firstIssue.message}`
-          : "Response didn't match the expected shape.",
+          : "Response didn't match the expected shape."
       );
       return;
     }
@@ -159,7 +160,7 @@ function QuestionCard({ question, projectId, tree, onUpdated, isHighlighted }: Q
 
     if (result.data.project_id !== projectId) {
       setError(
-        `This response is for a different project (project_id "${result.data.project_id}" doesn't match this project). Paste the reply generated for this project instead.`,
+        `This response is for a different project (project_id "${result.data.project_id}" doesn't match this project). Paste the reply generated for this project instead.`
       );
       return;
     }
@@ -191,7 +192,7 @@ function QuestionCard({ question, projectId, tree, onUpdated, isHighlighted }: Q
       setError(
         err instanceof Error
           ? `Couldn't save this response: ${err.message}`
-          : "Couldn't save this response.",
+          : "Couldn't save this response."
       );
     } finally {
       setIsSaving(false);
@@ -220,9 +221,7 @@ function QuestionCard({ question, projectId, tree, onUpdated, isHighlighted }: Q
       toast.success("Placement confirmed");
     } catch (err) {
       setConfirmError(
-        err instanceof Error
-          ? `Couldn't save placement: ${err.message}`
-          : "Couldn't save placement.",
+        err instanceof Error ? `Couldn't save placement: ${err.message}` : "Couldn't save placement."
       );
     } finally {
       setIsConfirming(false);
@@ -244,22 +243,22 @@ function QuestionCard({ question, projectId, tree, onUpdated, isHighlighted }: Q
       });
     } catch (err) {
       setRemoveError(
-        err instanceof Error
-          ? `Couldn't remove this placement: ${err.message}`
-          : "Couldn't remove this placement.",
+        err instanceof Error ? `Couldn't remove this placement: ${err.message}` : "Couldn't remove this placement."
       );
     } finally {
       setIsRemoving(false);
     }
   };
 
-  const placementSaved =
-    Boolean(question.confirmedNodeId) && question.confirmedNodeId === selectedNodeId;
+  const placementSaved = Boolean(question.confirmedNodeId) && question.confirmedNodeId === selectedNodeId;
 
   return (
     <Card
       ref={cardRef}
-      className={cn("mb-3 transition-shadow", isHighlighted && "ring-2 ring-primary shadow-md")}
+      className={cn(
+        "mb-3 transition-shadow",
+        isHighlighted && "ring-2 ring-primary shadow-md",
+      )}
     >
       <CardHeader className="flex flex-row items-start justify-between gap-2 space-y-0 pb-2">
         <div className="min-w-0 flex-1">
@@ -292,13 +291,11 @@ function QuestionCard({ question, projectId, tree, onUpdated, isHighlighted }: Q
               className="min-h-[140px] font-mono text-xs"
               disabled={isSaving}
             />
-            {error ? <p className="text-xs text-destructive">{error}</p> : null}
+            {error ? (
+              <p className="text-xs text-destructive">{error}</p>
+            ) : null}
             <div className="flex items-center gap-2">
-              <Button
-                size="sm"
-                onClick={handleSave}
-                disabled={isSaving || pastedText.trim().length === 0}
-              >
+              <Button size="sm" onClick={handleSave} disabled={isSaving || pastedText.trim().length === 0}>
                 {isSaving ? "Saving..." : "Save"}
               </Button>
               <Button
@@ -342,11 +339,7 @@ function QuestionCard({ question, projectId, tree, onUpdated, isHighlighted }: Q
                 onClick={handleConfirmPlacement}
                 disabled={isConfirming || !selectedNodeId || placementSaved}
               >
-                {isConfirming
-                  ? "Saving..."
-                  : placementSaved
-                    ? "Placement confirmed"
-                    : "Confirm placement"}
+                {isConfirming ? "Saving..." : placementSaved ? "Placement confirmed" : "Confirm placement"}
               </Button>
               {placementSaved && (
                 <span className="flex items-center gap-1 text-xs text-muted-foreground">
@@ -455,7 +448,7 @@ export function QuestionInboxDialog({
       setShowAddArea(false);
     } catch (err) {
       toast.error(
-        err instanceof Error ? `Couldn't add question: ${err.message}` : "Couldn't add question.",
+        err instanceof Error ? `Couldn't add question: ${err.message}` : "Couldn't add question."
       );
     } finally {
       setIsAdding(false);
@@ -475,8 +468,8 @@ export function QuestionInboxDialog({
         <DialogHeader>
           <DialogTitle>Exam question inbox</DialogTitle>
           <DialogDescription>
-            Add exam questions, copy them out to an AI assistant along with your curriculum tree,
-            then paste each AI reply back in to file the question.
+            Add exam questions, copy them out to an AI assistant along with your curriculum
+            tree, then paste each AI reply back in to file the question.
           </DialogDescription>
         </DialogHeader>
 

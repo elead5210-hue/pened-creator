@@ -57,7 +57,9 @@ export const SUGGEST_TOOL_ITEM_ID = "suggest-tool";
 /**
  * Convenience factory for the "Suggest a tool" option.
  */
-export function createSuggestToolItem(onSelect: () => void): GlobalNavContextMenuItem {
+export function createSuggestToolItem(
+  onSelect: () => void,
+): GlobalNavContextMenuItem {
   return {
     id: SUGGEST_TOOL_ITEM_ID,
     label: "Suggest a tool",
@@ -133,7 +135,9 @@ export function GlobalNavContextMenu({
                 data-testid={`global-nav-context-menu-item-${item.id}`}
                 className="cursor-pointer gap-2"
               >
-                {Icon ? <Icon className="h-4 w-4" aria-hidden="true" /> : null}
+                {Icon ? (
+                  <Icon className="h-4 w-4" aria-hidden="true" />
+                ) : null}
                 <span>{item.label}</span>
               </DropdownMenuItem>
             </div>

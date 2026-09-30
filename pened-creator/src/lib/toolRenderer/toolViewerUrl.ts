@@ -1,3 +1,4 @@
+
 /**
  * Builds and parses the iframe URLs used to embed the Tool Renderer
  * app's rendering of a single TOOL REGISTRY content block (see

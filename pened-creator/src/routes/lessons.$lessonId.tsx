@@ -1,6 +1,14 @@
+
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { AlertCircle, ArrowLeft, ArrowRight, BookCheck, ImagePlus, Pencil } from "lucide-react";
+import {
+  AlertCircle,
+  ArrowLeft,
+  ArrowRight,
+  BookCheck,
+  ImagePlus,
+  Pencil,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,12 +20,7 @@ import {
   type LessonRecord,
 } from "@/lib/curriculum/shared/db";
 import { ApiError } from "@/lib/curriculum/shared/apiClient";
-import {
-  expand,
-  PROJECT_ID,
-  type CurriculumNode,
-  type LessonBreakdown,
-} from "@/lib/curriculum/shared/schema";
+import { expand, PROJECT_ID, type CurriculumNode, type LessonBreakdown } from "@/lib/curriculum/shared/schema";
 import { buildLessonPrompt } from "@/lib/curriculum/phase2-content/promptBuilder";
 import { buildPromptFilename } from "@/lib/curriculum/phase2-content/download";
 import {
@@ -32,10 +35,7 @@ import { PasteResponseForm } from "@/components/curriculum/phase2-content/PasteR
 import { LessonContentView } from "@/components/curriculum/phase2-content/LessonContentView";
 import ImagePromptGenerator from "@/components/curriculum/phase2-content/ImagePromptGenerator";
 import { YoutubeKeywordGenerator } from "@/components/curriculum/phase2-content/YoutubeKeywordGenerator";
-import {
-  StepSidebar,
-  type StepSidebarItem,
-} from "@/components/curriculum/phase2-content/StepSidebar";
+import { StepSidebar, type StepSidebarItem } from "@/components/curriculum/phase2-content/StepSidebar";
 import { SlideshowDeckGenerator } from "@/components/curriculum/phase2-content/SlideshowDeckGenerator";
 import { GamesPlaceholder } from "@/components/curriculum/phase3-games/GamesPlaceholder";
 import { LessonStatus } from "@/lib/curriculum/phase2-content/lessonRecord";
@@ -58,7 +58,8 @@ export const Route = createFileRoute("/lessons/$lessonId")({
       { title: "Lesson detail — Curriculum Treeview" },
       {
         name: "description",
-        content: "The saved breakdown, generated prompt, and AI-generated content for this lesson.",
+        content:
+          "The saved breakdown, generated prompt, and AI-generated content for this lesson.",
       },
     ],
   }),
@@ -300,7 +301,8 @@ function LessonDetail() {
   // View Content step: only once content actually exists, only while the
   // user hasn't already completed that step, and only once a lesson
   // record exists to hand off to ImagePromptGenerator.
-  const showImageGenerationCta = Boolean(lessonRecord) && pipelineStage === "content-generated";
+  const showImageGenerationCta =
+    Boolean(lessonRecord) && pipelineStage === "content-generated";
 
   // Once this lesson's data has finished loading, default the visible tab
   // to wherever the pipeline stage says the user left off - "breakdown" for
@@ -348,18 +350,18 @@ function LessonDetail() {
     }
   }
 
-  const steps: StepSidebarItem<LifecycleTab>[] = (Object.keys(STEP_LABELS) as LifecycleTab[]).map(
-    (value) => ({
-      value,
-      label: STEP_LABELS[value],
-      // "games" (Phase 3) is included in PHASE2_STEPS/getPhase2StepStatuses
-      // alongside the Phase 2 steps, so its status - always "available",
-      // since Games is just a placeholder with nothing to unlock yet - comes
-      // from the same shared lookup as every other step rather than being
-      // special-cased here.
-      status: stepStatuses[value],
-    }),
-  );
+  const steps: StepSidebarItem<LifecycleTab>[] = (
+    Object.keys(STEP_LABELS) as LifecycleTab[]
+  ).map((value) => ({
+    value,
+    label: STEP_LABELS[value],
+    // "games" (Phase 3) is included in PHASE2_STEPS/getPhase2StepStatuses
+    // alongside the Phase 2 steps, so its status - always "available",
+    // since Games is just a placeholder with nothing to unlock yet - comes
+    // from the same shared lookup as every other step rather than being
+    // special-cased here.
+    status: stepStatuses[value],
+  }));
 
   return (
     <main className="min-h-screen bg-background">
@@ -539,15 +541,15 @@ function LessonDetail() {
                   // two differently-worded locks.
                   !lessonRecord || !youtubeKeywordsAvailable ? (
                     <p className="text-sm text-muted-foreground">
-                      Generate this lesson's content first - YouTube search keywords are built from
-                      the finished lesson JSON.
+                      Generate this lesson's content first - YouTube search keywords are built
+                      from the finished lesson JSON.
                     </p>
                   ) : (
                     <div className="space-y-3">
                       <p className="text-sm text-muted-foreground">
-                        Generate YouTube search keywords from this lesson's content, then look up
-                        matching videos to watch. This step doesn't save anything to the lesson
-                        record — keywords and results only last for this session.
+                        Generate YouTube search keywords from this lesson's content, then look
+                        up matching videos to watch. This step doesn't save anything to the
+                        lesson record — keywords and results only last for this session.
                       </p>
                       <YoutubeKeywordGenerator
                         lessonRecord={lessonRecord}

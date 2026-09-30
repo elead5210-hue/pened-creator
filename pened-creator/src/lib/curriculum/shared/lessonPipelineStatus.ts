@@ -1,3 +1,4 @@
+
 import type { LessonRecord } from "./db";
 
 /**
@@ -243,7 +244,9 @@ export function getPhase2StepUnlockStatus(
         : "available";
 
     case "view-content":
-      return stage === "content-generated" || stage === "images-generated" ? "complete" : "locked";
+      return stage === "content-generated" || stage === "images-generated"
+        ? "complete"
+        : "locked";
 
     case "youtube-keywords":
       // Unlocks under the same condition as image-generation (once the
@@ -254,7 +257,9 @@ export function getPhase2StepUnlockStatus(
       // aren't persisted anywhere on the lesson record), so it has no
       // stored completion signal to report and never resolves to
       // "complete" - it's either "locked" or "available".
-      return stage === "content-generated" || stage === "images-generated" ? "available" : "locked";
+      return stage === "content-generated" || stage === "images-generated"
+        ? "available"
+        : "locked";
 
     case "image-generation":
       // Image prompts are built from the finished lesson content, so this

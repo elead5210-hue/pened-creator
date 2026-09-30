@@ -32,7 +32,6 @@ import {
   setLessonImageNoBg,
   setLessonSlideshowDeck,
   buildLessonId,
-  type LessonStatusValue,
 } from "../phase2-content/lessonRecord";
 // A lesson's slideshow deck is stored on the server as the `slideshow`
 // entry of the lesson's interactiveContent (the same entry pened-tools
@@ -56,7 +55,7 @@ export type LessonRecord = {
   project_id: string;
   lesson_node_id: string;
   breakdown: unknown;
-  status: LessonStatusValue;
+  status: string;
   generatedPrompt: string | null;
   generatedContent: unknown[] | null;
   /**
@@ -270,10 +269,7 @@ export async function getLessonBreakdown(nodeId: string): Promise<LessonBreakdow
  * Persist (create or overwrite) the lesson breakdown for a given lesson
  * node id, following the same store-and-notify pattern as saveQuestion.
  */
-export async function saveLessonBreakdown(
-  nodeId: string,
-  breakdown: LessonBreakdown,
-): Promise<void> {
+export async function saveLessonBreakdown(nodeId: string, breakdown: LessonBreakdown): Promise<void> {
   await apiPut<LessonBreakdown>(`/api/lesson-breakdowns/${encodeURIComponent(nodeId)}`, breakdown, {
     projectId: PROJECT_ID,
   });
@@ -282,9 +278,7 @@ export async function saveLessonBreakdown(
 
 /** Deletes the saved lesson breakdown for a given lesson node id. */
 export async function deleteLessonBreakdown(nodeId: string): Promise<void> {
-  await apiDelete(`/api/lesson-breakdowns/${encodeURIComponent(nodeId)}`, {
-    projectId: PROJECT_ID,
-  });
+  await apiDelete(`/api/lesson-breakdowns/${encodeURIComponent(nodeId)}`, { projectId: PROJECT_ID });
   notify();
 }
 
@@ -468,9 +462,7 @@ function toSlideshowSaveError(err: unknown, id: string): SlideshowSaveError {
  */
 async function fetchInteractiveContent(id: string): Promise<InteractiveContentEntry[] | null> {
   try {
-    const data = await apiGet<unknown>(
-      `/api/lessons/${encodeURIComponent(id)}/interactive-content`,
-    );
+    const data = await apiGet<unknown>(`/api/lessons/${encodeURIComponent(id)}/interactive-content`);
     return lessonInteractiveContentResponseSchema.parse(data).interactiveContent;
   } catch (err) {
     if (err instanceof ApiError && err.status === 404) return null;
@@ -690,10 +682,7 @@ export async function listLessons(options: { status?: string } = {}): Promise<Le
 }
 
 /** Updates an existing lesson record by merging in changes and bumping updatedAt. */
-export async function updateLesson(
-  id: string,
-  changes: Record<string, unknown>,
-): Promise<LessonRecord> {
+export async function updateLesson(id: string, changes: Record<string, unknown>): Promise<LessonRecord> {
   const existing = await getLesson(id);
   if (!existing) {
     throw new Error(`No lesson found with id "${id}".`);
@@ -720,10 +709,7 @@ export async function updateLesson(
  * different project_id/lesson_node_id can't silently change (or collide
  * with) another lesson's identity.
  */
-export async function updateLessonBreakdown(
-  id: string,
-  breakdownJson: unknown,
-): Promise<LessonRecord> {
+export async function updateLessonBreakdown(id: string, breakdownJson: any): Promise<LessonRecord> {
   const { valid, errors } = validateLessonBreakdownDocument(breakdownJson);
 
   if (!valid) {
@@ -736,10 +722,7 @@ export async function updateLessonBreakdown(
     throw new Error(`No lesson found with id "${id}".`);
   }
 
-  const { project_id, lesson_node_id } = breakdownJson as {
-    project_id: string;
-    lesson_node_id: string;
-  };
+  const { project_id, lesson_node_id } = breakdownJson;
   const nextId = buildLessonId(project_id, lesson_node_id);
 
   if (nextId !== id) {
@@ -824,10 +807,7 @@ export async function updateLessonStatus(id: string, status: string): Promise<Le
  * Loads the existing record, applies setLessonGeneratedContent, and
  * persists the result.
  */
-export async function saveGeneratedContent(
-  id: string,
-  generatedContent: unknown[],
-): Promise<LessonRecord> {
+export async function saveGeneratedContent(id: string, generatedContent: unknown[]): Promise<LessonRecord> {
   const existing = await getLesson(id);
   if (!existing) {
     throw new Error(`No lesson found with id "${id}".`);
@@ -1020,7 +1000,10 @@ export async function saveBackgroundRemovedImage(
     throw new Error(`No lesson found with id "${id}".`);
   }
 
-  const updated = setLessonImageNoBg(existing, promptId, imageData) as LessonRecord;
+  const plainImage = existing.images?.[promptId];
+  const filename = plainImage ? deriveCutoutFilename(plainImage) : undefined;
+
+  const updated = setLessonImageNoBg(existing, promptId, imageData, filename) as LessonRecord;
   try {
     const saved = await apiPut<LessonRecord>(`/api/lessons/${encodeURIComponent(id)}`, updated);
     notify();

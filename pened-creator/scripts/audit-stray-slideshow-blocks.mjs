@@ -92,14 +92,11 @@ function snippet(text, max = 200) {
 
 function exitMisconfigured(message) {
   console.error(redact(`Configuration problem: ${message}`));
-  console.error(
-    "Run with PENED_SERVER_URL and AUDIT_SESSION_COOKIE set. See the header of this script for the rest.",
-  );
+  console.error("Run with PENED_SERVER_URL and AUDIT_SESSION_COOKIE set. See the header of this script for the rest.");
   process.exit(2);
 }
 
-if (typeof fetch !== "function")
-  exitMisconfigured("this script needs Node 18 or newer (global fetch).");
+if (typeof fetch !== "function") exitMisconfigured("this script needs Node 18 or newer (global fetch).");
 if (!BASE_RAW) exitMisconfigured("PENED_SERVER_URL is not set.");
 if (!SESSION_COOKIE) exitMisconfigured("AUDIT_SESSION_COOKIE is not set.");
 
@@ -139,25 +136,14 @@ async function request(method, path, { headers = {}, body, timeoutMs = 20000 } =
 }
 
 function isSlideshowBlock(block) {
-  return (
-    Boolean(block) &&
-    typeof block === "object" &&
-    !Array.isArray(block) &&
-    block.tool === SLIDESHOW_TOOL_ID
-  );
+  return Boolean(block) && typeof block === "object" && !Array.isArray(block) && block.tool === SLIDESHOW_TOOL_ID;
 }
 
 // ---------------------------------------------------------------------------
 
 async function main() {
-  log(
-    `Auditing lessons for project ${PROJECT_ID} at ${baseUrl.origin} (redirects are not followed)`,
-  );
-  log(
-    WRITE
-      ? "Mode: WRITE — stray blocks will be removed and saved."
-      : "Mode: DRY RUN — nothing will be saved (set AUDIT_WRITE=1 to actually clean up).",
-  );
+  log(`Auditing lessons for project ${PROJECT_ID} at ${baseUrl.origin} (redirects are not followed)`);
+  log(WRITE ? "Mode: WRITE — stray blocks will be removed and saved." : "Mode: DRY RUN — nothing will be saved (set AUDIT_WRITE=1 to actually clean up).");
   log("");
 
   const listRes = await request("GET", `/api/lessons?projectId=${encodeURIComponent(PROJECT_ID)}`, {
@@ -165,9 +151,7 @@ async function main() {
   });
 
   if (listRes.status !== 200 || !Array.isArray(listRes.json)) {
-    log(
-      `Failed to list lessons: expected 200 with an array, got ${listRes.status}: ${snippet(listRes.text)}`,
-    );
+    log(`Failed to list lessons: expected 200 with an array, got ${listRes.status}: ${snippet(listRes.text)}`);
     log("Is AUDIT_SESSION_COOKIE valid and still logged in?");
     process.exit(1);
   }
@@ -182,9 +166,7 @@ async function main() {
 
   for (const lesson of lessons) {
     const id = lesson && typeof lesson.id === "string" ? lesson.id : undefined;
-    const generatedContent = Array.isArray(lesson?.generatedContent)
-      ? lesson.generatedContent
-      : null;
+    const generatedContent = Array.isArray(lesson?.generatedContent) ? lesson.generatedContent : null;
 
     if (!id || !generatedContent) continue;
 
@@ -209,14 +191,10 @@ async function main() {
     // response) so the PUT round-trips every other field unchanged, the
     // same way ../src/lib/curriculum/shared/db.ts's saveGeneratedContent
     // does via getLesson()+updateLessonRecord() before its own apiPut.
-    const recordRes = await request("GET", `/api/lessons/${encodeURIComponent(id)}`, {
-      headers: sessionHeaders,
-    });
+    const recordRes = await request("GET", `/api/lessons/${encodeURIComponent(id)}`, { headers: sessionHeaders });
     if (recordRes.status !== 200 || !recordRes.json || typeof recordRes.json !== "object") {
       failed += 1;
-      log(
-        `  FAILED to re-load lesson before saving: expected 200, got ${recordRes.status}: ${snippet(recordRes.text)}`,
-      );
+      log(`  FAILED to re-load lesson before saving: expected 200, got ${recordRes.status}: ${snippet(recordRes.text)}`);
       continue;
     }
 
@@ -233,9 +211,7 @@ async function main() {
 
     if (saveRes.status < 200 || saveRes.status >= 300) {
       failed += 1;
-      log(
-        `  FAILED to save cleaned-up lesson: expected 2xx, got ${saveRes.status}: ${snippet(saveRes.text)}`,
-      );
+      log(`  FAILED to save cleaned-up lesson: expected 2xx, got ${saveRes.status}: ${snippet(saveRes.text)}`);
       continue;
     }
 
@@ -249,9 +225,7 @@ async function main() {
   } else if (WRITE) {
     log(`${affected} lesson(s) affected: ${cleaned} cleaned up, ${failed} failed.`);
   } else {
-    log(
-      `${affected} lesson(s) affected (dry run — nothing saved). Re-run with AUDIT_WRITE=1 to clean them up.`,
-    );
+    log(`${affected} lesson(s) affected (dry run — nothing saved). Re-run with AUDIT_WRITE=1 to clean them up.`);
   }
 
   process.exit(failed > 0 ? 1 : 0);

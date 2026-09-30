@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { AlertTriangle, ExternalLink } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -56,14 +57,7 @@ interface ToolContentFrameProps {
  * `MAX_TOOL_VIEWER_URL_LENGTH`), that's caught here and rendered as an
  * informative inline message rather than propagating as a render error.
  */
-export function ToolContentFrame({
-  toolId,
-  data,
-  title,
-  height = 480,
-  className,
-  lessonId,
-}: ToolContentFrameProps) {
+export function ToolContentFrame({ toolId, data, title, height = 480, className, lessonId }: ToolContentFrameProps) {
   const [loaded, setLoaded] = useState(false);
   const [errored, setErrored] = useState(false);
 
@@ -162,10 +156,7 @@ export function ToolContentFrame({
       <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
         {label}
       </span>
-      <div
-        className="relative w-full overflow-hidden rounded-md border border-border"
-        style={{ height: resolvedHeight }}
-      >
+      <div className="relative w-full overflow-hidden rounded-md border border-border" style={{ height: resolvedHeight }}>
         {!loaded && <Skeleton className="absolute inset-0 h-full w-full rounded-none" />}
         <iframe
           src={url}

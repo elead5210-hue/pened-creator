@@ -168,10 +168,7 @@ export type NodeHint = {
  *  2. Any existing node's label mentioned verbatim in the summary text.
  * A node is only ever reported once, under whichever match found it first.
  */
-export function extractNodeHints(
-  summaryText: string | undefined,
-  tree: CurriculumNode | null,
-): NodeHint[] {
+export function extractNodeHints(summaryText: string | undefined, tree: CurriculumNode | null): NodeHint[] {
   const hints: NodeHint[] = [];
   if (!summaryText || !tree) return hints;
 
@@ -559,9 +556,10 @@ export const imagePromptItemSchema: z.ZodType<ImagePromptItem> = z.object({
 });
 
 /** An array of AI-proposed image prompts, as pasted back by the user. */
-export const imagePromptResponseSchema = z
-  .array(imagePromptItemSchema)
-  .min(1, "at least one image prompt is required");
+export const imagePromptResponseSchema = z.array(imagePromptItemSchema).min(
+  1,
+  "at least one image prompt is required",
+);
 
 /**
  * Field-level error entry describing what's wrong with one entry (or the
@@ -645,9 +643,10 @@ export const youtubeKeywordItemSchema: z.ZodType<YoutubeKeywordItem> = z.object(
 });
 
 /** An array of AI-proposed YouTube search keywords, as pasted back by the user. */
-export const youtubeKeywordResponseSchema = z
-  .array(youtubeKeywordItemSchema)
-  .min(1, "at least one keyword is required");
+export const youtubeKeywordResponseSchema = z.array(youtubeKeywordItemSchema).min(
+  1,
+  "at least one keyword is required",
+);
 
 /**
  * Field-level error entry describing what's wrong with one entry (or the
@@ -787,11 +786,48 @@ export const interactiveContentEntrySchema: z.ZodType<
   })
   .passthrough()
   .refine((entry) => "data" in entry, { message: "data is required", path: ["data"] })
-  .transform((entry): InteractiveContentEntry => ({
-    ...entry,
-    tool: entry.tool,
-    data: entry.data,
-  }));
+  .transform((entry): InteractiveContentEntry => ({ ...entry, tool: entry.tool, data: entry.data }));
+
+/**
+ * Tool name under which the slideshow Deck is stored in a lesson's
+ * `interactiveContent` array (the `tool` field of the entry whose `data`
+ * is the Deck JSON).
+ */
+export const SLIDESHOW_TOOL_NAME = "slideshow";
+
+/**
+ * An interactiveContent entry known to hold slideshow data: `tool` is the
+ * literal "slideshow" and `data` is the Deck JSON as saved. The Deck's
+ * own shape (SlideshowDeck / SlideData) is defined and enforced by
+ * ../phase2-content/slideshowDeckValidator.ts; `data` stays `unknown`
+ * here because this module sits at the API boundary and must not trust
+ * (or depend on) that validator. Consumers should run `data` through
+ * parseAndValidateDeck / extractSlides before using it, so saved data is
+ * always consistently typed at the point of use.
+ */
+export type SlideshowInteractiveContentEntry = InteractiveContentEntry & {
+  tool: typeof SLIDESHOW_TOOL_NAME;
+};
+
+/**
+ * Type guard narrowing an interactiveContent entry to the slideshow entry.
+ */
+export function isSlideshowEntry(
+  entry: InteractiveContentEntry | null | undefined,
+): entry is SlideshowInteractiveContentEntry {
+  return !!entry && entry.tool === SLIDESHOW_TOOL_NAME;
+}
+
+/**
+ * Finds the slideshow entry in a lesson's interactiveContent (or undefined
+ * when none is saved, including when interactiveContent is null). Its
+ * `data` is still untrusted; validate it with parseAndValidateDeck.
+ */
+export function findSlideshowEntry(
+  entries: InteractiveContentEntry[] | null | undefined,
+): SlideshowInteractiveContentEntry | undefined {
+  return (entries ?? []).find(isSlideshowEntry);
+}
 
 /**
  * Response body of GET /api/lessons/:lessonId/interactive-content:

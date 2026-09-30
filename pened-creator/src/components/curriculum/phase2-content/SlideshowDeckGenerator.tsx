@@ -56,7 +56,7 @@ export function SlideshowDeckGenerator({ lesson, onLessonUpdated }: SlideshowDec
   const deckSaved = hasSavedSlideshowDeck(lesson);
 
   const slideCount = Array.isArray((lesson.slideshowDeck as { slides?: unknown[] } | null)?.slides)
-    ? (lesson.slideshowDeck as { slides: unknown[] }).slides.length
+    ? ((lesson.slideshowDeck as { slides: unknown[] }).slides.length)
     : 0;
 
   // The pened-tools link carries only the lesson id (pened-tools loads the
@@ -80,9 +80,7 @@ export function SlideshowDeckGenerator({ lesson, onLessonUpdated }: SlideshowDec
       const { prompt: request } = buildSlideshowPromptRequest(lesson);
       setPrompt(request);
     } catch (err) {
-      setGenerateError(
-        err instanceof Error ? err.message : "Failed to build the slideshow prompt.",
-      );
+      setGenerateError(err instanceof Error ? err.message : "Failed to build the slideshow prompt.");
     }
   }
 
@@ -147,9 +145,7 @@ export function SlideshowDeckGenerator({ lesson, onLessonUpdated }: SlideshowDec
         {/* STEP 1: build + output */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-            <CardTitle className="text-sm font-semibold">
-              Step 1 — Build the slideshow prompt
-            </CardTitle>
+            <CardTitle className="text-sm font-semibold">Step 1 — Build the slideshow prompt</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {!hasContent ? (
@@ -164,15 +160,12 @@ export function SlideshowDeckGenerator({ lesson, onLessonUpdated }: SlideshowDec
               </p>
             )}
 
-            {generateError && <p className="text-sm text-destructive">{generateError}</p>}
+            {generateError && (
+              <p className="text-sm text-destructive">{generateError}</p>
+            )}
           </CardContent>
           <CardFooter>
-            <Button
-              type="button"
-              onClick={handleGenerate}
-              disabled={!hasContent}
-              className="ml-auto"
-            >
+            <Button type="button" onClick={handleGenerate} disabled={!hasContent} className="ml-auto">
               <Sparkles className="mr-1.5 h-4 w-4" />
               Generate prompt
             </Button>
@@ -222,9 +215,7 @@ export function SlideshowDeckGenerator({ lesson, onLessonUpdated }: SlideshowDec
           </CardContent>
           <CardFooter>
             <span className="font-mono text-xs text-muted-foreground">
-              {hasPrompt
-                ? "Prompt generated — copy it and paste it to an AI"
-                : "Nothing generated yet"}
+              {hasPrompt ? "Prompt generated — copy it and paste it to an AI" : "Nothing generated yet"}
             </span>
           </CardFooter>
         </Card>

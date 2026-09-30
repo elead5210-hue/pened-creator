@@ -1,3 +1,4 @@
+
 import { Component, type ReactNode } from "react";
 import { ToolContentFrame } from "@/components/tools/ToolContentFrame";
 

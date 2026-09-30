@@ -46,20 +46,6 @@ can only read the registry, never write to it.
   `/api/tool-suggestions` and resolves to `{ suggestion }`. Throws
   `ToolSuggestionsApiError`, which carries `status`, a stable `code`,
   optional per-field `fields`, and `retryAfterSeconds` for rate limiting.
-- `listMyToolSuggestions()` — `GET`s `/api/tool-suggestions/mine` and
-  resolves to `{ items }`, the caller's own suggestions as
-  `MyToolSuggestion[]`. Any signed-in user may call it. The server leaves
-  out the internal review fields (`adminNote`, `reviewedBy`) and every
-  email, so a submitter only sees the `status` and `reviewedAt`. Throws
-  `ToolSuggestionsApiError` (`401` when signed out; a `2xx` response
-  without an `items` array is an `UNKNOWN_ERROR`).
-- `ToolSuggestionErrorCode` — the stable `code` values on
-  `ToolSuggestionsApiError`: `VALIDATION_ERROR`, `UNAUTHENTICATED`,
-  `FORBIDDEN`, `NOT_FOUND`, `METHOD_NOT_ALLOWED`, `RATE_LIMITED`,
-  `INTERNAL_ERROR`, plus the client-side `NETWORK_ERROR` and
-  `UNKNOWN_ERROR`. `METHOD_NOT_ALLOWED` is the structured `405` the server
-  returns when a route exists but not for the HTTP method used; if the body
-  is not JSON the code is derived from the status instead.
 - `validateToolSuggestionDescription(description)` — client-side length
   check (10 to 2000 characters after trimming) for fast feedback; the API
   always re-validates.
@@ -72,19 +58,6 @@ responses from `docs/api-handoff/tool-suggestions.md`. The mock is only
 used when `VITE_USE_MOCK_TOOL_SUGGESTIONS=true` or when a test swaps it in,
 and must never be enabled in a production build. The contract is in
 `docs/api-handoff/tool-suggestions.md`.
-
-### Admin-only endpoints
-
-The server's list (`GET /api/tool-suggestions`), get
-(`GET /api/tool-suggestions/:id`) and update (`PATCH`) endpoints are
-admin-only and answer `403 FORBIDDEN` to everyone else. **Only call them
-when `useAuth().isAdmin` is `true`** (from `@/lib/auth/AuthContext`, derived
-from the `isAdmin` flag on the current-user payload). Never call them for
-non-admins or while `isAdmin` is `false` because the session is still
-loading or logged out. Non-admin users who want to see their own
-suggestions use `listMyToolSuggestions()`, which is open to any signed-in
-user. The client currently has no admin list/get/PATCH functions, so add
-them here, gated this way at the call site, if the admin view is built.
 
 ## All API calls go through the shared client
 
@@ -123,10 +96,9 @@ finalized; no other file should need to change as a result.
   `apiGet` and the `ApiError` class to call the `/api/tools` endpoints
   and translate a 404 into "not found" for `getTool`.
   `toolSuggestionsClient.ts` imports `apiUrl` to build the absolute URL for
-  its `POST /api/tool-suggestions` and `GET /api/tool-suggestions/mine`
-  requests. It uses `fetch` directly, rather than `apiPost`/`apiGet`, so it
-  can read the `Retry-After` header and the structured
-  `{ error: { code, message, fields } }` body.
+  its `POST /api/tool-suggestions` request. It uses `fetch` directly, rather
+  than `apiPost`, so it can read the `Retry-After` header and the
+  structured `{ error: { code, message, fields } }` body.
 
 
 ## Imported by (outside this folder)

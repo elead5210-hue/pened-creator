@@ -1,3 +1,4 @@
+
 import { useRef, useState } from "react";
 import { Eraser, Upload } from "lucide-react";
 import { toast } from "sonner";
@@ -300,6 +301,7 @@ export function ImagePromptCard({
                   disabled={isSelectingSuggestion}
                   className="shrink-0 overflow-hidden rounded-md border transition hover:border-primary disabled:pointer-events-none disabled:opacity-50"
                 >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={suggestion.imageData}
                     alt={`Suggested reuse image (${suggestion.matchCount} matching tag${suggestion.matchCount === 1 ? "" : "s"})`}
@@ -323,6 +325,7 @@ export function ImagePromptCard({
           }
         >
           {hasImage ? (
+            // eslint-disable-next-line @next/next/no-img-element
             <img
               src={imageUrl ?? undefined}
               alt={item.altText || item.description || `Generated image for ${item.id}`}
@@ -371,6 +374,7 @@ export function ImagePromptCard({
             }
           >
             {hasBgRemovedImage ? (
+              // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={bgRemovedImageUrl ?? undefined}
                 alt={`Background-removed image for ${item.id}`}
@@ -392,7 +396,12 @@ export function ImagePromptCard({
 
         <div className="mt-auto flex flex-col gap-2">
           <div className="flex gap-2">
-            <Button size="sm" className="flex-1" onClick={handleCopy} disabled={isCopying}>
+            <Button
+              size="sm"
+              className="flex-1"
+              onClick={handleCopy}
+              disabled={isCopying}
+            >
               {isCopying ? "Copying..." : "Copy prompt + aspect ratio"}
             </Button>
             <Button

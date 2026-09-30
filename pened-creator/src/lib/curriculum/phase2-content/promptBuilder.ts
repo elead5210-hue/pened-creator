@@ -1,3 +1,4 @@
+
 import { getTools, type Tool } from "@/lib/tools/toolsClient";
 import { SLIDESHOW_TOOL_ID } from "./slideshowInteractiveContent";
 
@@ -97,9 +98,7 @@ Output requirements:
  *   src/models/lesson.js), expected to have a `.breakdown` field containing
  *   the original pasted JSON.
  */
-export async function buildLessonPrompt(
-  lessonRecord: LessonPromptRecord,
-): Promise<LessonPromptResult> {
+export async function buildLessonPrompt(lessonRecord: LessonPromptRecord): Promise<LessonPromptResult> {
   if (!lessonRecord || typeof lessonRecord !== "object") {
     throw new Error("buildLessonPrompt requires a lesson record.");
   }

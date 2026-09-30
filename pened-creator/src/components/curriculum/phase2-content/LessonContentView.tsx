@@ -1,3 +1,4 @@
+
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,11 +26,7 @@ interface LessonContentViewProps {
  * and worded to be distinct from the "Import Curriculum JSON" flow,
  * which is where the underlying curriculum JSON itself is pasted/edited.
  */
-export function LessonContentView({
-  lessonRecord,
-  onViewDetails,
-  onClose,
-}: LessonContentViewProps) {
+export function LessonContentView({ lessonRecord, onViewDetails, onClose }: LessonContentViewProps) {
   return (
     <Card>
       <CardHeader className="flex flex-row items-start justify-between gap-2 space-y-0">

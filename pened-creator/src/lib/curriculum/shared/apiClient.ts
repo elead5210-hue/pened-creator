@@ -118,11 +118,7 @@ function getBaseUrl(): string {
     );
   }
 
-  if (
-    import.meta.env.PROD &&
-    parsed.protocol === "http:" &&
-    !LOCAL_HOSTNAMES.has(parsed.hostname)
-  ) {
+  if (import.meta.env.PROD && parsed.protocol === "http:" && !LOCAL_HOSTNAMES.has(parsed.hostname)) {
     throw new Error(
       `VITE_API_URL ("${url}") uses plain http:// in a production build. Use https:// so session ` +
         "cookies and credentials are not sent unencrypted, then rebuild.",
@@ -263,9 +259,7 @@ async function request<T>(
         ? errorBody.error
         : `Request failed with status ${res.status} ${res.statusText}`.trim();
     const details =
-      errorBody && Array.isArray(errorBody.details)
-        ? (errorBody.details as ApiErrorDetail[])
-        : undefined;
+      errorBody && Array.isArray(errorBody.details) ? (errorBody.details as ApiErrorDetail[]) : undefined;
     if (res.status === 401 && !path.startsWith("/api/auth/")) {
       // Before treating this as an expired session, confirm with the
       // server. If the session is actually still valid, retry the
@@ -325,10 +319,7 @@ export async function uploadImage(dataUrl: string): Promise<string> {
 
   const url = response?.url;
   if (typeof url !== "string" || url.length === 0) {
-    throw new ApiError(
-      500,
-      "Image upload succeeded but the server response did not include a url.",
-    );
+    throw new ApiError(500, "Image upload succeeded but the server response did not include a url.");
   }
 
   return url;
@@ -345,3 +336,4 @@ export interface ToolInputSchema {
   description?: string;
   additionalProperties?: boolean;
 }
+

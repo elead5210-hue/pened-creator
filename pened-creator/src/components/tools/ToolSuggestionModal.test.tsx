@@ -68,13 +68,8 @@ function Harness({
   );
 }
 
-function setAdapter(
-  submit: (input: SubmitToolSuggestionInput) => Promise<SubmitToolSuggestionResult>,
-) {
-  const adapter: ToolSuggestionsAdapter = {
-    submit: vi.fn(submit),
-    listMy: vi.fn(async () => ({ items: [] })),
-  };
+function setAdapter(submit: (input: SubmitToolSuggestionInput) => Promise<SubmitToolSuggestionResult>) {
+  const adapter: ToolSuggestionsAdapter = { submit: vi.fn(submit) };
   setToolSuggestionsAdapter(adapter);
   return adapter;
 }
@@ -144,9 +139,7 @@ describe("ToolSuggestionModal", () => {
       await user.type(getTextarea(), "too short");
       await user.click(screen.getByTestId("tool-suggestion-submit"));
 
-      expect(
-        await screen.findByText("Description must be at least 10 characters."),
-      ).toBeInTheDocument();
+      expect(await screen.findByText("Description must be at least 10 characters.")).toBeInTheDocument();
       expect(adapter.submit).not.toHaveBeenCalled();
     });
 
@@ -169,9 +162,7 @@ describe("ToolSuggestionModal", () => {
       fireEvent.change(getTextarea(), { target: { value: "x".repeat(2001) } });
       fireEvent.click(screen.getByTestId("tool-suggestion-submit"));
 
-      expect(
-        await screen.findByText("Description must be 2000 characters or fewer."),
-      ).toBeInTheDocument();
+      expect(await screen.findByText("Description must be 2000 characters or fewer.")).toBeInTheDocument();
       expect(adapter.submit).not.toHaveBeenCalled();
     });
 
@@ -182,16 +173,12 @@ describe("ToolSuggestionModal", () => {
 
       await user.type(getTextarea(), "short");
       await user.tab();
-      expect(
-        await screen.findByText("Description must be at least 10 characters."),
-      ).toBeInTheDocument();
+      expect(await screen.findByText("Description must be at least 10 characters.")).toBeInTheDocument();
 
       await user.click(getTextarea());
       await user.type(getTextarea(), " but now it is long enough");
       await waitFor(() =>
-        expect(
-          screen.queryByText("Description must be at least 10 characters."),
-        ).not.toBeInTheDocument(),
+        expect(screen.queryByText("Description must be at least 10 characters.")).not.toBeInTheDocument(),
       );
       expect(getTextarea()).not.toHaveAttribute("aria-invalid");
     });
@@ -214,9 +201,7 @@ describe("ToolSuggestionModal", () => {
       expect(onSubmitted).toHaveBeenCalledTimes(1);
       expect(toastSuccess).toHaveBeenCalledTimes(1);
 
-      await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument(), {
-        timeout: 3000,
-      });
+      await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument(), { timeout: 3000 });
       expect(onOpenChangeSpy).toHaveBeenLastCalledWith(false);
     });
 
@@ -419,9 +404,7 @@ describe("ToolSuggestionModal", () => {
 
       await user.type(getTextarea(), "short");
       await user.tab();
-      expect(
-        await screen.findByText("Description must be at least 10 characters."),
-      ).toBeInTheDocument();
+      expect(await screen.findByText("Description must be at least 10 characters.")).toBeInTheDocument();
 
       await user.keyboard("{Escape}");
       await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
@@ -430,9 +413,7 @@ describe("ToolSuggestionModal", () => {
       await screen.findByRole("dialog");
 
       expect(getTextarea()).toHaveValue("");
-      expect(
-        screen.queryByText("Description must be at least 10 characters."),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByText("Description must be at least 10 characters.")).not.toBeInTheDocument();
       expect(screen.getByText("0/2000")).toBeInTheDocument();
     });
 

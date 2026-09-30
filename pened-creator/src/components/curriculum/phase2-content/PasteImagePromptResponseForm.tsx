@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -5,10 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { saveImagePrompts, type LessonRecord } from "@/lib/curriculum/shared/db";
 import { ApiError } from "@/lib/curriculum/shared/apiClient";
-import {
-  validateImagePromptResponse,
-  type ImagePromptValidationError,
-} from "@/lib/curriculum/shared/schema";
+import { validateImagePromptResponse, type ImagePromptValidationError } from "@/lib/curriculum/shared/schema";
 
 const PLACEHOLDER_JSON =
   '[\n  {\n    "id": "img-01",\n    "sourceTool": "...",\n    "description": "...",\n    "imagePrompt": "...",\n    "style": "...",\n    "aspectRatio": "16:9",\n    "altText": "..."\n  },\n  ...\n]';
@@ -151,9 +149,9 @@ export function PasteImagePromptResponseForm({
       <CardHeader>
         <CardTitle>Paste the AI's Response</CardTitle>
         <CardDescription>
-          Paste the AI's reply to the image prompt request below — the JSON array of image prompts
-          (markdown code fences are fine, they'll be stripped automatically). It will be validated
-          before saving.
+          Paste the AI's reply to the image prompt request below — the JSON array of image
+          prompts (markdown code fences are fine, they'll be stripped automatically). It will be
+          validated before saving.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -172,19 +170,13 @@ export function PasteImagePromptResponseForm({
         </div>
 
         {summaryError ? (
-          <div
-            role="alert"
-            className="space-y-1 rounded-md border border-destructive/50 bg-destructive/10 p-3"
-          >
+          <div role="alert" className="space-y-1 rounded-md border border-destructive/50 bg-destructive/10 p-3">
             <p className="text-xs font-medium text-destructive">{summaryError}</p>
           </div>
         ) : null}
 
         {hasFieldErrors ? (
-          <div
-            role="alert"
-            className="space-y-2 rounded-md border border-destructive/50 bg-destructive/10 p-3"
-          >
+          <div role="alert" className="space-y-2 rounded-md border border-destructive/50 bg-destructive/10 p-3">
             <p className="text-xs font-medium text-destructive">
               {fieldErrors.length === 1
                 ? "1 problem was found with the pasted response:"

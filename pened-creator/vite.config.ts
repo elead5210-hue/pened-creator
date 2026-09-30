@@ -1,9 +1,10 @@
-import { defineConfig } from "vitest/config";
-import { tanstackStart } from "@tanstack/react-start/plugin/vite";
-import viteReact from "@vitejs/plugin-react";
-import tailwindcss from "@tailwindcss/vite";
-import { nitro } from "nitro/vite";
-import path from "path";
+
+import { defineConfig } from 'vitest/config'
+import { tanstackStart } from '@tanstack/react-start/plugin/vite'
+import viteReact from '@vitejs/plugin-react'
+import tailwindcss from '@tailwindcss/vite'
+import { nitro } from 'nitro/vite'
+import path from 'path'
 
 export default defineConfig({
   root: __dirname,
@@ -11,9 +12,9 @@ export default defineConfig({
     tailwindcss(),
     tanstackStart({
       tsr: {
-        srcDirectory: "src",
-        routesDirectory: "src/routes",
-        generatedRouteTree: "src/routeTree.gen.ts",
+        srcDirectory: 'src',
+        routesDirectory: 'src/routes',
+        generatedRouteTree: 'src/routeTree.gen.ts',
       },
     }),
     // Makes `vite build` also emit a self-contained Node server at
@@ -26,7 +27,7 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "./src"),
+      '@': path.resolve(__dirname, './src'),
     },
   },
   server: {
@@ -50,12 +51,10 @@ export default defineConfig({
     // that's localhost or a LAN IP.
   },
   test: {
-    environment: "jsdom",
+    environment: 'jsdom',
     globals: true,
-    setupFiles: ["./src/test/setup.ts"],
-    // scripts/**/*.test.js covers the build guards (e.g. check-api-calls.js),
-    // which are plain Node ESM files rather than part of src/.
-    include: ["src/**/*.{test,spec}.{ts,tsx}", "scripts/**/*.test.js"],
+    setupFiles: ['./src/test/setup.ts'],
+    include: ['src/**/*.{test,spec}.{ts,tsx}'],
     css: false,
   },
-});
+})

@@ -1,18 +1,16 @@
+
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import {
-  saveSlideshowDeck,
-  SlideshowSaveError,
-  type LessonRecord,
-} from "@/lib/curriculum/shared/db";
+import { saveSlideshowDeck, SlideshowSaveError, type LessonRecord } from "@/lib/curriculum/shared/db";
 import { ApiError } from "@/lib/curriculum/shared/apiClient";
 import {
-  parseDeckJson,
+  parseAndValidateDeck,
   validateDeck,
   type DeckError,
+  type SlideshowDeck,
 } from "@/lib/curriculum/phase2-content/slideshowDeckValidator";
 
 const PLACEHOLDER_JSON =
@@ -47,9 +45,7 @@ function describeSaveError(err: unknown): string {
     }
     return err.message;
   }
-  return err instanceof Error
-    ? err.message
-    : "Failed to save the slideshow deck. Please try again.";
+  return err instanceof Error ? err.message : "Failed to save the slideshow deck. Please try again.";
 }
 
 /**
@@ -59,9 +55,10 @@ function describeSaveError(err: unknown): string {
  * and a save action that persists the parsed deck via
  * saveSlideshowDeck(lessonId, deck). Mirrors
  * PasteImagePromptResponseForm.tsx's structure, but works over a single
- * JSON object (a Deck) rather than a JSON array of items, so it uses
- * parseDeckJson (object extraction) instead of extractJsonArray and
- * validateDeck instead of validateImagePromptResponse.
+ * JSON object (a Deck) rather than a JSON array of items, so it uses the
+ * shared parseAndValidateDeck helper (object extraction plus validation,
+ * returning a typed deck or structured per-field errors) instead of
+ * extractJsonArray and validateImagePromptResponse.
  */
 export function PasteSlideshowDeckResponseForm({
   lessonId,
@@ -87,29 +84,32 @@ export function PasteSlideshowDeckResponseForm({
   }
 
   /**
-   * Parses and validates the raw textarea value. Throws a plain Error
-   * (with a single message) for empty input, malformed JSON, or no object
-   * found. Returns { parsed, valid, errors } for a structurally valid
-   * object that fails schema validation, so the caller can render a
-   * field list.
+   * Parses and validates the raw textarea value with the shared typed
+   * parser. Throws a plain Error (with a single message) for empty input,
+   * malformed JSON, or no object found. Returns { deck, errors } where
+   * `deck` is the typed deck when valid (null otherwise) and `errors` is
+   * the structured per-field error list, so the caller can render it.
    */
-  function parseAndValidate(text: string) {
+  function parseAndValidate(text: string): { deck: SlideshowDeck | null; errors: DeckError[] } {
     const trimmed = text.trim();
 
     if (!trimmed) {
       throw new Error("Please paste the AI response JSON before saving.");
     }
 
-    let parsed: unknown;
-    try {
-      parsed = parseDeckJson(trimmed);
-    } catch (err) {
-      throw err instanceof Error ? err : new Error(String(err));
+    const result = parseAndValidateDeck(trimmed);
+
+    if (result.ok) {
+      return { deck: result.deck, errors: [] };
     }
 
-    const { valid, errors } = validateDeck(parsed);
+    // A single "$" error means the text couldn't be parsed as a JSON
+    // object at all: surface it as a summary message rather than a field list.
+    if (result.errors.length === 1 && result.errors[0].path === "$") {
+      throw new Error(result.errors[0].message);
+    }
 
-    return { parsed, valid, errors };
+    return { deck: null, errors: result.errors };
   }
 
   async function handleSave() {
@@ -121,7 +121,7 @@ export function PasteSlideshowDeckResponseForm({
       return;
     }
 
-    let result: { parsed: unknown; valid: boolean; errors: DeckError[] };
+    let result: { deck: SlideshowDeck | null; errors: DeckError[] };
     try {
       result = parseAndValidate(rawText);
     } catch (err) {
@@ -129,7 +129,8 @@ export function PasteSlideshowDeckResponseForm({
       return;
     }
 
-    if (!result.valid) {
+    const deck = result.deck;
+    if (!deck) {
       setFieldErrors(result.errors);
       return;
     }
@@ -137,7 +138,7 @@ export function PasteSlideshowDeckResponseForm({
     savingRef.current = true;
     setIsSaving(true);
     try {
-      const lessonRecord = await saveSlideshowDeck(lessonId, result.parsed);
+      const lessonRecord = await saveSlideshowDeck(lessonId, deck);
       // Only discard the pasted text once the returned record actually has
       // the deck; otherwise keep it so the user can retry.
       if (lessonRecord.slideshowDeck) {
@@ -150,7 +151,7 @@ export function PasteSlideshowDeckResponseForm({
         // as a list of problems with the pasted deck (re-derived from the
         // validator), not as a failed save. Fall back to the error's own
         // message if the validator finds nothing to list.
-        const { errors } = validateDeck(result.parsed);
+        const { errors } = validateDeck(deck);
         if (errors.length > 0) {
           setFieldErrors(errors);
         } else {
@@ -202,34 +203,25 @@ export function PasteSlideshowDeckResponseForm({
         </div>
 
         {summaryError ? (
-          <div
-            role="alert"
-            className="space-y-1 rounded-md border border-destructive/50 bg-destructive/10 p-3"
-          >
+          <div role="alert" className="space-y-1 rounded-md border border-destructive/50 bg-destructive/10 p-3">
             <p className="text-xs font-medium text-destructive">{summaryError}</p>
           </div>
         ) : null}
 
         {saveError ? (
-          <div
-            role="alert"
-            className="space-y-1 rounded-md border border-destructive/50 bg-destructive/10 p-3"
-          >
+          <div role="alert" className="space-y-1 rounded-md border border-destructive/50 bg-destructive/10 p-3">
             <p className="text-xs font-medium text-destructive">
               The slideshow data wasn't saved: {saveError}
             </p>
             <p className="text-xs text-muted-foreground">
-              Your pasted response is still here and it passed validation. Fix the problem above,
-              then save again.
+              Your pasted response is still here and it passed validation. Fix the problem above, then
+              save again.
             </p>
           </div>
         ) : null}
 
         {hasFieldErrors ? (
-          <div
-            role="alert"
-            className="space-y-2 rounded-md border border-destructive/50 bg-destructive/10 p-3"
-          >
+          <div role="alert" className="space-y-2 rounded-md border border-destructive/50 bg-destructive/10 p-3">
             <p className="text-xs font-medium text-destructive">
               {fieldErrors.length === 1
                 ? "1 problem was found with the pasted deck. It wasn't saved, because pened-tools couldn't play it as it is:"
