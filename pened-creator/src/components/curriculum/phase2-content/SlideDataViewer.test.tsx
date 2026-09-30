@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
 import { SlideDataViewer } from "./SlideDataViewer";
 
@@ -28,6 +29,37 @@ function makeDeck(slides: unknown[], overrides: Record<string, unknown> = {}) {
     slides,
     ...overrides,
   };
+}
+
+const LESSON = {
+  id: "proj-1:node-9",
+  project_id: "proj-1",
+  lesson_node_id: "node-9",
+  imagePrompts: [
+    {
+      id: "img-01",
+      sourceTool: "slideshow",
+      description: "A labelled diagram of a plant cell",
+      altText: "Plant cell diagram",
+    },
+  ],
+  images: { "img-01": "plant-cell.png" },
+};
+
+const LESSON_WITHOUT_IMAGES = {
+  id: "proj-1:node-9",
+  project_id: "proj-1",
+  lesson_node_id: "node-9",
+  imagePrompts: [{ id: "img-01", description: "A labelled diagram of a plant cell" }],
+  images: null,
+};
+
+function getAddImagesButton(slideNumber: number) {
+  return screen.getByRole("button", { name: `Add images to slide ${slideNumber}` });
+}
+
+function getPromptText() {
+  return (screen.getByRole("textbox", { name: /generated prompt/i }) as HTMLTextAreaElement).value;
 }
 
 function getPrevious() {
@@ -408,6 +440,174 @@ describe("SlideDataViewer", () => {
       render(<SlideDataViewer slideshowDeck={makeDeck([makeSlide("a"), makeSlide("b")])} />);
 
       expect(screen.getByRole("region", { name: "Title a, slide 1 of 2" })).toBeTruthy();
+    });
+  });
+
+  describe("Add images button and prompt modal", () => {
+    it("does not show the Add images button when no lesson is supplied", () => {
+      render(<SlideDataViewer slideshowDeck={makeDeck([makeSlide("a"), makeSlide("b")])} />);
+
+      expect(screen.queryByRole("button", { name: /add images/i })).toBeNull();
+    });
+
+    it("shows the Add images button when a lesson is supplied", () => {
+      render(<SlideDataViewer slideshowDeck={makeDeck([makeSlide("a"), makeSlide("b")])} lesson={LESSON} />);
+
+      expect(getAddImagesButton(1)).toBeTruthy();
+    });
+
+    it("does not show the button in the empty or invalid states", () => {
+      const { rerender } = render(<SlideDataViewer slideshowDeck={null} lesson={LESSON} />);
+      expect(screen.queryByRole("button", { name: /add images/i })).toBeNull();
+
+      rerender(<SlideDataViewer slideshowDeck={"{ not valid json"} lesson={LESSON} />);
+      expect(screen.queryByRole("button", { name: /add images/i })).toBeNull();
+    });
+
+    it("does not open the modal until the button is clicked", () => {
+      render(<SlideDataViewer slideshowDeck={makeDeck([makeSlide("a")])} lesson={LESSON} />);
+
+      expect(screen.queryByRole("dialog")).toBeNull();
+    });
+
+    it("opens the modal with the prompt for the current slide", async () => {
+      const user = userEvent.setup();
+      render(<SlideDataViewer slideshowDeck={makeDeck([makeSlide("a"), makeSlide("b")])} lesson={LESSON} />);
+
+      await user.click(getAddImagesButton(1));
+
+      expect(await screen.findByRole("dialog", { name: "Add images to slide 1" })).toBeTruthy();
+      const prompt = getPromptText();
+      expect(prompt).toContain("Content for a");
+      expect(prompt).not.toContain("Content for b");
+    });
+
+    it("lists the lesson's uploaded image descriptions in the prompt", async () => {
+      const user = userEvent.setup();
+      render(<SlideDataViewer slideshowDeck={makeDeck([makeSlide("a")])} lesson={LESSON} />);
+
+      await user.click(getAddImagesButton(1));
+      await screen.findByRole("dialog");
+
+      const prompt = getPromptText();
+      expect(prompt).toContain("img-01");
+      expect(prompt).toContain("A labelled diagram of a plant cell");
+      expect(prompt).toContain("plant-cell.png");
+    });
+
+    it("shows the no-images message when the lesson has no uploaded images", async () => {
+      const user = userEvent.setup();
+      render(<SlideDataViewer slideshowDeck={makeDeck([makeSlide("a")])} lesson={LESSON_WITHOUT_IMAGES} />);
+
+      await user.click(getAddImagesButton(1));
+      await screen.findByRole("dialog");
+
+      expect(screen.getByTestId("slide-images-no-images")).toBeTruthy();
+      expect((screen.getByRole("button", { name: "Copy to Clipboard" }) as HTMLButtonElement).disabled).toBe(true);
+    });
+
+    it("follows navigation: the modal opens for whichever slide is shown", async () => {
+      const user = userEvent.setup();
+      render(
+        <SlideDataViewer
+          slideshowDeck={makeDeck([makeSlide("a"), makeSlide("b"), makeSlide("c")])}
+          lesson={LESSON}
+        />,
+      );
+
+      // Slide 1.
+      await user.click(getAddImagesButton(1));
+      await screen.findByRole("dialog", { name: "Add images to slide 1" });
+      expect(getPromptText()).toContain("Content for a");
+      await user.keyboard("{Escape}");
+      await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+
+      // Slide 2.
+      fireEvent.click(getNext());
+      await user.click(getAddImagesButton(2));
+      await screen.findByRole("dialog", { name: "Add images to slide 2" });
+      let prompt = getPromptText();
+      expect(prompt).toContain("Content for b");
+      expect(prompt).not.toContain("Content for a");
+      await user.keyboard("{Escape}");
+      await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+
+      // Slide 3.
+      fireEvent.click(getNext());
+      await user.click(getAddImagesButton(3));
+      await screen.findByRole("dialog", { name: "Add images to slide 3" });
+      prompt = getPromptText();
+      expect(prompt).toContain("Content for c");
+      expect(prompt).not.toContain("Content for b");
+    });
+
+    it("closes with Escape and stays on the same slide", async () => {
+      const user = userEvent.setup();
+      render(<SlideDataViewer slideshowDeck={makeDeck([makeSlide("a"), makeSlide("b")])} lesson={LESSON} />);
+
+      fireEvent.click(getNext());
+      await user.click(getAddImagesButton(2));
+      await screen.findByRole("dialog");
+
+      await user.keyboard("{Escape}");
+      await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+
+      expect(screen.getByText("Content for b")).toBeTruthy();
+      expect(screen.getAllByText("Slide 2 of 2").length).toBeGreaterThan(0);
+    });
+
+    it("returns focus to the Add images button when the modal closes", async () => {
+      const user = userEvent.setup();
+      render(<SlideDataViewer slideshowDeck={makeDeck([makeSlide("a"), makeSlide("b")])} lesson={LESSON} />);
+
+      const button = getAddImagesButton(1);
+      // Focus the button explicitly so the previously focused element is
+      // deterministic (a click alone doesn't reliably focus a button in jsdom).
+      act(() => {
+        button.focus();
+      });
+      expect(button).toHaveFocus();
+
+      await user.click(button);
+      await screen.findByRole("dialog");
+
+      await user.keyboard("{Escape}");
+      await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+      await waitFor(() => expect(getAddImagesButton(1)).toHaveFocus(), { timeout: 2000 });
+    });
+
+    it("returns focus to the button after closing with the modal's Close button", async () => {
+      const user = userEvent.setup();
+      render(<SlideDataViewer slideshowDeck={makeDeck([makeSlide("a")])} lesson={LESSON} />);
+
+      await user.click(getAddImagesButton(1));
+      const dialog = await screen.findByRole("dialog");
+
+      const closeButton = Array.from(dialog.querySelectorAll("button")).find(
+        (candidate) => candidate.textContent?.trim() === "Close" && !candidate.querySelector("svg"),
+      );
+      expect(closeButton).toBeTruthy();
+      await user.click(closeButton as HTMLElement);
+
+      await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+      await waitFor(() => expect(getAddImagesButton(1)).toHaveFocus(), { timeout: 2000 });
+    });
+
+    it("closes the modal if the deck's content changes while it is open", async () => {
+      const user = userEvent.setup();
+      const { rerender } = render(
+        <SlideDataViewer slideshowDeck={makeDeck([makeSlide("a"), makeSlide("b")])} lesson={LESSON} />,
+      );
+
+      await user.click(getAddImagesButton(1));
+      await screen.findByRole("dialog");
+
+      rerender(
+        <SlideDataViewer slideshowDeck={makeDeck([makeSlide("x"), makeSlide("y")])} lesson={LESSON} />,
+      );
+
+      await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+      expect(screen.getByText("Content for x")).toBeTruthy();
     });
   });
 });

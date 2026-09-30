@@ -4,6 +4,7 @@ import { clampSlideIndex, extractSlides } from "@/lib/curriculum/phase2-content/
 import { formatDeckErrors } from "@/lib/curriculum/phase2-content/slideshowDeckValidator";
 import { SlideDataBreadcrumbNav } from "./SlideDataBreadcrumbNav";
 import { SlideDataCard } from "./SlideDataCard";
+import { SlideImagesPromptModal, type SlideImagesPromptLesson } from "./SlideImagesPromptModal";
 
 export interface SlideDataViewerProps {
   /**
@@ -13,6 +14,13 @@ export interface SlideDataViewerProps {
   slideshowDeck: unknown;
   /** Optional zero-based slide index to start on (clamped into range). */
   initialIndex?: number;
+  /**
+   * The lesson record (or any object with `imagePrompts` and `images`). When
+   * supplied, each slide card shows an "Add images" button that opens a
+   * read-only modal with the prompt for the slide currently shown, listing
+   * the lesson's uploaded images. When omitted, the button is not shown.
+   */
+  lesson?: SlideImagesPromptLesson | null;
 }
 
 /**
@@ -24,11 +32,14 @@ export interface SlideDataViewerProps {
  * slide; clamping only guards against an out-of-range index (for example a
  * too-large or negative `initialIndex`).
  */
-export function SlideDataViewer({ slideshowDeck, initialIndex = 0 }: SlideDataViewerProps) {
+export function SlideDataViewer({ slideshowDeck, initialIndex = 0, lesson }: SlideDataViewerProps) {
   const extracted = useMemo(() => extractSlides(slideshowDeck), [slideshowDeck]);
   const [requestedIndex, setRequestedIndex] = useState(initialIndex);
   const headingRef = useRef<HTMLDivElement>(null);
   const hasNavigatedRef = useRef(false);
+  const addImagesButtonRef = useRef<HTMLButtonElement>(null);
+  const wasModalOpenRef = useRef(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const totalSlides = extracted.totalSlides;
   const currentIndex = clampSlideIndex(requestedIndex, totalSlides);
@@ -65,6 +76,9 @@ export function SlideDataViewer({ slideshowDeck, initialIndex = 0 }: SlideDataVi
     if (previousSignatureRef.current === deckSignature) return;
     previousSignatureRef.current = deckSignature;
     hasNavigatedRef.current = false;
+    // Close the modal without pulling focus back: the user didn't close it.
+    wasModalOpenRef.current = false;
+    setIsModalOpen(false);
     setRequestedIndex(0);
   }, [deckSignature]);
 
@@ -76,6 +90,21 @@ export function SlideDataViewer({ slideshowDeck, initialIndex = 0 }: SlideDataVi
       headingRef.current?.focus();
     }
   }, [currentIndex]);
+
+  // Return focus to the "Add images" button once the modal has closed
+  // (Escape, Close button, or click-outside).
+  useEffect(() => {
+    if (isModalOpen) {
+      wasModalOpenRef.current = true;
+      return;
+    }
+    if (!wasModalOpenRef.current) return;
+    wasModalOpenRef.current = false;
+    const timer = setTimeout(() => {
+      addImagesButtonRef.current?.focus();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [isModalOpen]);
 
   function handleNavigate(index: number) {
     hasNavigatedRef.current = true;
@@ -154,8 +183,25 @@ export function SlideDataViewer({ slideshowDeck, initialIndex = 0 }: SlideDataVi
         aria-label={`${current.title}, slide ${current.number} of ${totalSlides}`}
         className="rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
-        <SlideDataCard slide={current.data} slideNumber={current.number} title={current.title} />
+        <SlideDataCard
+          slide={current.data}
+          slideNumber={current.number}
+          title={current.title}
+          onAddImages={lesson ? () => setIsModalOpen(true) : undefined}
+          addImagesButtonRef={addImagesButtonRef}
+        />
       </div>
+
+      {lesson ? (
+        <SlideImagesPromptModal
+          open={isModalOpen}
+          onOpenChange={setIsModalOpen}
+          slide={current.data}
+          lesson={lesson}
+          slideNumber={current.number}
+          slideTitle={current.title}
+        />
+      ) : null}
     </div>
   );
 }

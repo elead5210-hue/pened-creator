@@ -634,6 +634,7 @@ function LessonDetail() {
                     <SlideDataViewer
                       key={`${lessonId}-${slideDataResetKey}`}
                       slideshowDeck={savedSlideshowDeck}
+                      lesson={lessonRecord}
                     />
                   )
                 ) : null}

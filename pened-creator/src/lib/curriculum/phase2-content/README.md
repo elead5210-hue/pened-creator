@@ -143,6 +143,65 @@ from.
   `slideshowDeckValidator.ts`'s `parseAndValidateDeck`, so a slide that
   shows up here has passed the same checks as a saved deck. Tests are in
   `slideshowDeckSlides.test.ts`. Depends on `./slideshowDeckValidator`.
+- `slideImagesPromptBuilder.ts` — builds the per-slide "add images"
+  prompt shown by the Slide Data step's "Add images" modal
+  (`buildSlideImagesPrompt`, `getUploadedImageDescriptions`,
+  `SlideImagesLessonInput`, `UploadedImageDescription`,
+  `SlideImagesPromptResult`). It is pure and deterministic: it makes no
+  AI call, does no I/O, and never mutates its input. Tests are in
+  `slideImagesPromptBuilder.test.ts`. No internal dependencies: the
+  lesson input is typed structurally (`imagePrompts` and `images`), so
+  it accepts a `LessonRecord` or any object with those two fields.
+
+  **Inputs.** `buildSlideImagesPrompt(slide, lesson)` takes one slide's
+  data object exactly as saved in the deck (typed `unknown`, and
+  malformed slides are tolerated) and the lesson. It returns
+  `{ prompt, images, hasImages }`: the full prompt text, the uploaded
+  images that were listed in it, and whether there were any.
+
+  **Which images are listed.** `getUploadedImageDescriptions(lesson)`
+  joins the lesson's `imagePrompts` with its `images` map by id and
+  returns one `{ id, description, altText, src, sourceTool }` per image
+  prompt that has a non-empty uploaded filename in `images`, in the
+  order of `imagePrompts`. An image prompt that has no uploaded image
+  is left out, because a slide can't reference an image that hasn't
+  been uploaded. Values are trimmed, and entries without an id, and
+  non-array or malformed input, are skipped rather than throwing.
+
+  **What the prompt contains.** The prompt tells the AI to add image
+  elements to the slide's `elements` array using only the uploaded
+  images, setting each element's `src` to the image's exact `src` from
+  the list, and to change nothing else on the slide. It restates the
+  image-element rules that `slideshowDeckValidator.ts` enforces, so a
+  slide the AI returns stays compatible with it: `type` is exactly
+  `"image"`, `id` is a non-empty string unique among the slide's
+  elements, `src` is a non-empty string copied from the list, `position`
+  is `{ x, y }` and `size` is `{ width, height }` (each a number, or
+  `"auto"` for a size), `alt` is optional, and the slide keeps its `id`
+  and an `elements` array. It also includes an example image element,
+  the UPLOADED IMAGES list (id, src, description, and altText and
+  sourceTool when present), and the slide JSON.
+
+  **Response format.** The prompt asks for JSON only: the complete
+  updated slide as a single JSON object, with no prose, comments,
+  markdown fences or wrapper object.
+
+  **Edge cases.** With no uploaded images (`hasImages` is `false`) the
+  prompt says so and tells the AI to return the slide unchanged and
+  not to invent any image elements or `src` values; the modal shows a
+  no-images message and disables copy and download in that case. When
+  the slide already contains image elements, the prompt says how many,
+  and tells the AI to keep every existing element exactly as it is, not
+  to add a second copy of an image the slide already shows, and to
+  place new images so they don't overlap.
+
+  **Deliberately deferred.** Nothing here parses or saves the AI's
+  response: this module only produces the prompt text. Pasting the
+  response back, validating the updated slide and saving it to the deck
+  is planned for a later update. When that lands, validate the pasted
+  slide with `slideshowDeckValidator.ts` rather than adding a second
+  set of rules, and keep the schema rules in the prompt in sync with
+  that validator.
 - `slideshowInteractiveContent.ts` — pure helpers for reading and
   writing a lesson's slideshow deck as an `interactiveContent` entry
   (`SLIDESHOW_TOOL_ID`, `InteractiveContentEntry`, `InteractiveContent`,
@@ -281,7 +340,8 @@ the one reverse edge noted under "Imported by" below
   saved-deck summary's lesson-id "Open in pened-tools" link, shown only
   once a deck is saved on the server, with a visible error when the
   lesson id is invalid or `VITE_TOOL_RENDERER_BASE_URL` is missing or
-  invalid).
+  invalid), `slideImagesPromptBuilder.ts` (`SlideImagesPromptModal.tsx`,
+  to build the per-slide "add images" prompt it displays).
 - **`routes/`** — `lessons.$lessonId.tsx` (`promptBuilder.ts`,
   `lessonRecord.ts`).
 - **`lib/curriculum/shared/`** — `db.ts` imports `lessonRecord.ts`

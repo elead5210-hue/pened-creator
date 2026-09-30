@@ -332,6 +332,91 @@ saved deck, one slide per card.
 - [ ] **Expected:** the Slide Data step shows that lesson's own deck (or
       stays locked), never the previous lesson's.
 
+**"Add images" prompt modal (per slide)**
+
+This is a read-only view: the modal only displays a prompt to take to an
+AI assistant. Saving the AI's response back to the deck is deliberately
+deferred to a later update, so nothing in this section should change the
+saved deck. Run it on a lesson that has a saved deck and at least two
+uploaded images (from the Image Generation step), plus one image prompt
+that has no uploaded image.
+
+- [ ] Open the Slide Data step on the first slide.
+- [ ] **Expected:** the card header shows an "Add images" button whose
+      accessible name is "Add images to slide 1". The button is not shown
+      when the step is locked, empty or showing the invalid-deck alert.
+- [ ] Click **Add images**.
+- [ ] **Expected:** a modal titled "Add images to slide 1" opens over the
+      page, with a description saying nothing is saved from it, a
+      read-only prompt textarea, and Close, Download as Text and Copy to
+      Clipboard buttons.
+- [ ] Read the prompt.
+- [ ] **Expected:** it contains this slide's data (its id, title and
+      element content) and does not contain any other slide's content. It
+      lists each uploaded image by id, `src` and description (plus alt
+      text where there is one), restates the image-element rules (`type`
+      "image", a `src` copied from the list, `position`, `size`) and asks
+      for the complete updated slide as JSON only.
+- [ ] Look for the image prompt that has no uploaded image.
+- [ ] **Expected:** it is not listed in the prompt. Only uploaded images
+      appear, and the line above the textarea gives the number of uploaded
+      images listed.
+- [ ] Close the modal, click **Next**, and open **Add images** again on
+      slide 2, then repeat on the last slide.
+- [ ] **Expected:** each time the title shows the current slide number and
+      the prompt contains that slide's data, not the previous slide's.
+- [ ] Open the modal on a slide that already has an image element.
+- [ ] **Expected:** the prompt says how many image elements the slide
+      already has and tells the AI to keep existing elements unchanged and
+      not to duplicate an image the slide already shows.
+
+**Copy and download**
+
+- [ ] Click **Copy to Clipboard**.
+- [ ] **Expected:** a "Copied!" toast appears, and pasting into a text
+      editor gives exactly the prompt shown in the modal.
+- [ ] Click **Download as Text**.
+- [ ] **Expected:** a "Downloaded." toast appears and a `.txt` file is
+      saved, named like `<project id>_<lesson node id>_slide-<N>_images-prompt.txt`,
+      whose contents match the prompt shown.
+- [ ] Close the modal and check the Slide Data step.
+- [ ] **Expected:** the deck, the current slide and the saved-deck summary
+      are unchanged, and no save request was sent (check the Network tab).
+
+**No uploaded images**
+
+- [ ] Open a lesson that has no uploaded images (or clear them), go to
+      Slide Data and click **Add images**.
+- [ ] **Expected:** the modal shows a clear "No images uploaded yet"
+      message that points to the Image Generation step. The prompt tells
+      the AI to return the slide unchanged and not to invent images, and
+      **Copy to Clipboard** and **Download as Text** are disabled. Close
+      still works.
+
+**Keyboard, focus and screen reader**
+
+- [ ] Open the modal with the keyboard (Tab to **Add images**, press
+      Enter or Space).
+- [ ] **Expected:** focus moves into the modal, and Tab and Shift+Tab stay
+      inside it and do not reach the page behind it.
+- [ ] Press Escape.
+- [ ] **Expected:** the modal closes and focus returns to the **Add
+      images** button that opened it.
+- [ ] Open it again and close it with the **Close** button, then with a
+      click outside the modal.
+- [ ] **Expected:** both close it and return focus to the **Add images**
+      button.
+- [ ] With a screen reader, open the modal.
+- [ ] **Expected:** it is announced as a dialog named "Add images to slide
+      N" and described by the line saying nothing is saved from it. The
+      textarea is announced as "Generated prompt (read-only)" and its
+      contents can be read. The no-images message (when shown) is
+      announced as a status.
+- [ ] Open the modal, then save a different deck for the lesson in another
+      tab and let this tab refresh.
+- [ ] **Expected:** the modal closes with the reset to the first slide, and
+      focus is not forced back onto the button.
+
 ## Pass criteria
 
 All expected results above must hold. In particular, across the full
@@ -366,10 +451,17 @@ pipeline:
   at the first and last slide), handles empty, invalid and single-slide
   data without crashing, and resets to the first slide when the deck is
   replaced.
+- The per-slide "Add images" modal opens from every slide with a prompt
+  built from that slide's data and only the lesson's uploaded images,
+  shows a clear no-images state (with copy and download disabled), copies
+  and downloads exactly the prompt shown, is fully keyboard and screen
+  reader accessible, and returns focus to the **Add images** button when
+  it closes. It never changes or saves the deck: saving the AI's response
+  is deliberately deferred to a later update.
 
 ## Sign-off
 
 - [ ] `npm run verify` passed (no unresolved imports)
-- [ ] Full walkthrough (steps 1–10) passed
+- [ ] Full walkthrough (steps 1–10, including the "Add images" prompt modal) passed
 - [ ] `slideshow-lesson-id-links-checklist.md` run (sections 3 to 7)
 - Tested by: ______________________  Date: ______________________

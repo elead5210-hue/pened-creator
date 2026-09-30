@@ -1,4 +1,7 @@
+import type { Ref } from "react";
+import { ImagePlus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { SlideData, SlideElementData } from "@/lib/curriculum/phase2-content/slideshowDeckValidator";
 
@@ -9,6 +12,13 @@ export interface SlideDataCardProps {
   slideNumber: number;
   /** Display title for the slide (already falls back to "Slide N"). */
   title: string;
+  /**
+   * When provided, an "Add images" button is shown in the card header and
+   * this callback runs when it is clicked. Omit it to hide the button.
+   */
+  onAddImages?: () => void;
+  /** Optional ref to the "Add images" button, so a parent can manage focus. */
+  addImagesButtonRef?: Ref<HTMLButtonElement>;
 }
 
 /** Keys shown in dedicated rows, so they're left out of the element's "other fields" list. */
@@ -91,7 +101,7 @@ function ElementRow({ element, index }: { element: SlideElementData; index: numb
  * type-specific fields (content or src). Any other slide-level fields the
  * AI included are listed under "Other fields" so nothing is hidden.
  */
-export function SlideDataCard({ slide, slideNumber, title }: SlideDataCardProps) {
+export function SlideDataCard({ slide, slideNumber, title, onAddImages, addImagesButtonRef }: SlideDataCardProps) {
   const background = formatBackground(slide.background);
   const elements = Array.isArray(slide.elements) ? slide.elements : [];
   const otherSlideFields = Object.entries(slide).filter(
@@ -100,11 +110,28 @@ export function SlideDataCard({ slide, slideNumber, title }: SlideDataCardProps)
 
   return (
     <Card aria-labelledby={`slide-data-card-title-${slideNumber}`}>
-      <CardHeader>
-        <CardTitle id={`slide-data-card-title-${slideNumber}`}>{title}</CardTitle>
-        <CardDescription>
-          Slide {slideNumber} · <span className="font-mono">{slide.id}</span>
-        </CardDescription>
+      <CardHeader className="flex flex-row items-start justify-between gap-2 space-y-0">
+        <div className="space-y-1.5">
+          <CardTitle id={`slide-data-card-title-${slideNumber}`}>{title}</CardTitle>
+          <CardDescription>
+            Slide {slideNumber} · <span className="font-mono">{slide.id}</span>
+          </CardDescription>
+        </div>
+        {onAddImages ? (
+          <Button
+            ref={addImagesButtonRef}
+            type="button"
+            size="sm"
+            variant="outline"
+            className="shrink-0"
+            onClick={onAddImages}
+            aria-label={`Add images to slide ${slideNumber}`}
+            aria-haspopup="dialog"
+          >
+            <ImagePlus className="size-4" aria-hidden="true" />
+            Add images
+          </Button>
+        ) : null}
       </CardHeader>
       <CardContent className="space-y-4">
         <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">

@@ -88,6 +88,64 @@ The source audit this was derived from lives in
   and the position is announced through a polite live region. Tests are
   in `SlideDataViewer.test.tsx`.
 
+  **"Add images" button and prompt modal.** `SlideDataViewer.tsx` also
+  takes an optional `lesson` prop (the lesson record, or any object with
+  `imagePrompts` and `images`; the route passes its `lessonRecord`). The
+  prop only controls the button: when it is omitted, nothing about the
+  viewer changes and no button is shown. When it is supplied, the viewer
+  passes `SlideDataCard.tsx` an `onAddImages` callback, and the card
+  shows an "Add images" button in its header, with the accessible name
+  "Add images to slide N" and `aria-haspopup="dialog"`. `SlideDataCard`
+  renders the button only when `onAddImages` is provided, and accepts an
+  optional `addImagesButtonRef` so its parent can manage focus. The
+  button is not shown in the empty or invalid states, because there is no
+  card there.
+
+  The viewer owns the modal's open state and renders
+  `SlideImagesPromptModal.tsx` for the slide currently shown. The modal
+  is given that slide's data, so it follows navigation: closing it,
+  moving to another slide and opening it again shows the prompt for the
+  new slide. If the deck's content changes while the modal is open (for
+  example the deck is re-saved), the modal closes together with the reset
+  to the first slide, and focus is not pulled back to the button because
+  the user did not close it. When the modal closes any other way (Escape,
+  the Close button or a click outside it), focus returns to the "Add
+  images" button. The viewer restores it explicitly, and the modal also
+  restores focus to the element that had it when the modal opened, so
+  this does not depend only on the dialog primitive's own focus handling.
+
+  `SlideImagesPromptModal.tsx` is a read-only modal built on the `Dialog`
+  primitive (Radix), which provides the focus trap, Escape to close,
+  click-outside dismissal and the dialog ARIA roles. Props: `open`,
+  `onOpenChange`, `slide`, `lesson`, and optional `slideNumber` and
+  `slideTitle` (used for the title, the description and the download
+  filename). It builds the prompt with `slideImagesPromptBuilder`'s
+  `buildSlideImagesPrompt` only while it is open, and rebuilds it when the
+  slide or lesson changes. The dialog is labelled by its title ("Add
+  images to slide N") and described by a line saying nothing is saved
+  from it. The prompt is shown in a read-only textarea with a visible
+  label, which selects its text on focus, and an uploaded-image count is
+  linked to it with `aria-describedby`. The footer has Close, "Download
+  as Text" and "Copy to Clipboard" buttons. Copy and download use the
+  shared `download.ts` helpers with a toast for success or failure, and
+  the download filename is
+  `<project_id>_<lesson_node_id>_slide-<N>_images-prompt.txt`.
+
+  When the lesson has no uploaded images, the modal shows a clear
+  no-images message (`role="status"`) that points the user to the Image
+  Generation step, still shows the prompt (which tells the AI to return
+  the slide unchanged), and disables copy and download because there is
+  nothing to place. A missing `lesson` is treated the same way. Only
+  images that have actually been uploaded are listed in the prompt.
+
+  **Deferred.** Saving the AI's response is deliberately not part of
+  this update. The modal only displays the prompt for the user to take to
+  an AI assistant; nothing is parsed, validated or saved when it is used,
+  and the deck is never changed by it. Pasting the response back and
+  saving the updated slide is planned for a later update. Tests are in
+  `SlideImagesPromptModal.test.tsx` and in the "Add images button and
+  prompt modal" section of `SlideDataViewer.test.tsx`.
+
   `StepSidebar.tsx` gives each step button an accessible name that
   includes its position and state (for example "Step 8 of 9: Slide Data,
   locked, complete the earlier steps to unlock"); the visual indicators
@@ -161,7 +219,8 @@ for its own parent dependencies, which point back into
   `PromptViewer.tsx`, `YoutubeKeywordGenerator.tsx`,
   `toolRenderers/WorksheetRenderer.tsx`, `SlideshowDeckGenerator.tsx`
   (`copyTextToClipboard`, `downloadTextFile`,
-  `buildSlideshowPromptFilename`).
+  `buildSlideshowPromptFilename`), `SlideImagesPromptModal.tsx`
+  (`copyTextToClipboard`, `downloadTextFile`).
 - `imagePromptBuilder` — `buildImagePromptRequest` — used in
   `ImagePromptGenerator.tsx`.
 - `slideshowPromptBuilder` — `buildSlideshowPromptRequest` — used in
@@ -174,6 +233,10 @@ for its own parent dependencies, which point back into
 - `slideshowDeckSlides` — `extractSlides`, `clampSlideIndex` — used in
   `SlideDataViewer.tsx` to turn the saved deck into a normalized,
   ordered slide list.
+- `slideImagesPromptBuilder` — `buildSlideImagesPrompt`,
+  `SlideImagesLessonInput` (type) — used in `SlideImagesPromptModal.tsx`
+  to build the per-slide "add images" prompt from the current slide and
+  the lesson's uploaded images.
 - `slideshowToolUrl` — `resolveSlideshowLink` — used in
   `SlideshowDeckGenerator.tsx` to build its saved-deck summary's "Open
   in pened-tools" link from the lesson id (not from the deck).
@@ -216,7 +279,11 @@ alongside the exports this folder uses from it:
 - `Label` (`label`)
 - `Textarea` (`textarea`)
 - `Separator` (`separator`)
-- `Alert`/`AlertDescription`/`AlertTitle` (`alert`)
+- `Alert`/`AlertDescription`/`AlertTitle` (`alert`) — also used in
+  `SlideImagesPromptModal.tsx` for the no-images message
+- `Dialog`/`DialogContent`/`DialogDescription`/`DialogFooter`/
+  `DialogHeader`/`DialogTitle` (`dialog`) — used in
+  `SlideImagesPromptModal.tsx`
 - `Skeleton` (`skeleton`)
 
 Nothing in this folder imports from `phase1-tree/`, `components/shell/`,
@@ -233,9 +300,12 @@ file.
   `YoutubeKeywordGenerator`, `StepSidebar`, `SlideshowDeckGenerator`
   (which in turn imports `PasteSlideshowDeckResponseForm` from within
   this folder), and `SlideDataViewer` (which in turn imports
-  `SlideDataCard` and `SlideDataBreadcrumbNav`). The route adds a
+  `SlideDataCard`, `SlideDataBreadcrumbNav` and
+  `SlideImagesPromptModal`). The route adds a
   `"slide-data"` step after `"slideshow-data"`; it stays locked until a
-  slideshow deck is saved on the lesson.
+  slideshow deck is saved on the lesson. It passes its `lessonRecord` to
+  `SlideDataViewer` as the `lesson` prop, which turns on the per-slide
+  "Add images" button.
 - `src/routes/tools.tsx` and `src/routes/tools.interactive.tsx` —
   import `toolRenderers/ContentDispatcher` directly. These two
   dummy-data preview routes bypass the rest of this folder and only
