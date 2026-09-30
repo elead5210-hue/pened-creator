@@ -250,7 +250,7 @@ describe("SlideDataViewer", () => {
   });
 
   describe("deck changes", () => {
-    it("keeps the index in range when the deck shrinks", () => {
+    it("returns to the first slide when the deck shrinks (content changed)", () => {
       const { rerender } = render(
         <SlideDataViewer slideshowDeck={makeDeck([makeSlide("a"), makeSlide("b"), makeSlide("c")])} />,
       );
@@ -261,8 +261,40 @@ describe("SlideDataViewer", () => {
 
       rerender(<SlideDataViewer slideshowDeck={makeDeck([makeSlide("a"), makeSlide("b")])} />);
 
+      // Any change in deck content resets the view to the first slide.
+      expect(screen.getByText("Content for a")).toBeTruthy();
+      expect(screen.queryByText("Content for c")).toBeNull();
+      expect(screen.getAllByText("Slide 1 of 2").length).toBeGreaterThan(0);
+    });
+
+    it("clamps an out-of-range initialIndex into range and keeps navigation working", () => {
+      render(
+        <SlideDataViewer
+          slideshowDeck={makeDeck([makeSlide("a"), makeSlide("b")])}
+          initialIndex={50}
+        />,
+      );
+
       expect(screen.getByText("Content for b")).toBeTruthy();
       expect(screen.getAllByText("Slide 2 of 2").length).toBeGreaterThan(0);
+      expect((getNext() as HTMLButtonElement).disabled).toBe(true);
+
+      fireEvent.click(getPrevious());
+
+      expect(screen.getByText("Content for a")).toBeTruthy();
+      expect(screen.getAllByText("Slide 1 of 2").length).toBeGreaterThan(0);
+    });
+
+    it("clamps a negative initialIndex to the first slide", () => {
+      render(
+        <SlideDataViewer
+          slideshowDeck={makeDeck([makeSlide("a"), makeSlide("b")])}
+          initialIndex={-5}
+        />,
+      );
+
+      expect(screen.getByText("Content for a")).toBeTruthy();
+      expect((getPrevious() as HTMLButtonElement).disabled).toBe(true);
     });
 
     it("switches from empty to slides when a deck is saved", () => {

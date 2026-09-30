@@ -61,6 +61,11 @@ export function ToolSuggestionModal({ open, onOpenChange, onSubmitted }: ToolSug
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // The element that had focus when the modal opened, so focus can be
+  // restored to it explicitly on close instead of relying only on the dialog
+  // primitive's unmount-time focus restore.
+  const previouslyFocusedRef = useRef<HTMLElement | null>(null);
+  const wasOpenRef = useRef(false);
 
   const textareaId = useId();
   const errorId = `${textareaId}-error`;
@@ -68,6 +73,29 @@ export function ToolSuggestionModal({ open, onOpenChange, onSubmitted }: ToolSug
 
   const isSubmitting = state === "submitting";
   const isSuccess = state === "success";
+
+  // Capture the trigger when the modal opens and restore focus to it once
+  // the modal has closed (Escape, Cancel, click-outside, or auto-close).
+  useEffect(() => {
+    if (open && !wasOpenRef.current) {
+      const active = document.activeElement;
+      previouslyFocusedRef.current =
+        active instanceof HTMLElement && active !== document.body ? active : null;
+    } else if (!open && wasOpenRef.current) {
+      const target = previouslyFocusedRef.current;
+      previouslyFocusedRef.current = null;
+      if (target && target.isConnected) {
+        // Wait a tick so this runs after the dialog primitive has unmounted
+        // and finished its own focus handling.
+        const timer = setTimeout(() => {
+          if (target.isConnected) target.focus();
+        }, 0);
+        wasOpenRef.current = open;
+        return () => clearTimeout(timer);
+      }
+    }
+    wasOpenRef.current = open;
+  }, [open]);
 
   // Reset everything each time the modal is closed so it reopens clean.
   useEffect(() => {

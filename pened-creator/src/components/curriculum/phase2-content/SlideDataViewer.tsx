@@ -20,7 +20,9 @@ export interface SlideDataViewerProps {
  * saved. Extracts the slides from the saved deck and shows one slide's data
  * object per card, with breadcrumb-style Previous/Next navigation. Handles
  * the empty (nothing saved) and invalid (unparseable or failing validation)
- * states, and keeps the current index in range if the deck changes.
+ * states. When the deck's content changes, the view resets to the first
+ * slide; clamping only guards against an out-of-range index (for example a
+ * too-large or negative `initialIndex`).
  */
 export function SlideDataViewer({ slideshowDeck, initialIndex = 0 }: SlideDataViewerProps) {
   const extracted = useMemo(() => extractSlides(slideshowDeck), [slideshowDeck]);
@@ -31,9 +33,11 @@ export function SlideDataViewer({ slideshowDeck, initialIndex = 0 }: SlideDataVi
   const totalSlides = extracted.totalSlides;
   const currentIndex = clampSlideIndex(requestedIndex, totalSlides);
 
-  // If the deck shrinks (e.g. the user returns after re-saving), pull the
-  // stored index back into range so later navigation starts from the
-  // slide that is actually shown.
+  // Safeguard for an out-of-range index (for example a too-large or negative
+  // `initialIndex`): pull the stored index back into range so later
+  // navigation starts from the slide that is actually shown. A deck whose
+  // content changes (including one that shrinks) is handled separately
+  // below, by resetting to the first slide.
   useEffect(() => {
     if (requestedIndex !== currentIndex) {
       setRequestedIndex(currentIndex);

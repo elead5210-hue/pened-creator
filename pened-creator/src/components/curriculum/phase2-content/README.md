@@ -64,15 +64,18 @@ The source audit this was derived from lives in
   `SlideDataViewer.tsx` takes the lesson's saved deck (`slideshowDeck`:
   a parsed object, JSON/raw text, or null/undefined) and an optional
   `initialIndex`, extracts the slides via `extractSlides`, and shows one
-  slide per card. It tracks the current index (kept in range with
-  `clampSlideIndex`, so it stays valid if the deck shrinks), moves focus
+  slide per card. It tracks the current index, moves focus
   to the card region after the user navigates (by button or arrow key)
   but never on initial mount or when the deck is replaced, and renders
   an empty state (nothing saved) or an error alert listing validation
   problems (invalid deck) instead of the card. It compares the deck by
   content: a background refresh that supplies an identical deck keeps
-  the user's current slide, while a genuinely changed deck (for example
-  a re-saved one) resets the view to the first slide. The card region
+  the user's current slide, while any change in deck content (for
+  example a re-saved deck, including one with fewer slides) resets the
+  view to the first slide. `clampSlideIndex` is only a safeguard that
+  keeps an out-of-range index (such as a too-large or negative
+  `initialIndex`) within the deck; it is not what handles a changed or
+  shrunken deck. The card region
   has `role="region"` and an accessible name of the form "Title, slide N
   of M". `SlideDataCard.tsx` renders one slide's data
   object: id, title, background, each element (type, position, size,

@@ -6,6 +6,11 @@ import tailwindcss from '@tailwindcss/vite'
 import { nitro } from 'nitro/vite'
 import path from 'path'
 
+// Set VITEST_HANGING=1 (see the `test:hanging` script) to add Vitest's
+// hanging-process reporter, which reports the open handle that keeps the
+// process from exiting after a run.
+const reporters = process.env.VITEST_HANGING ? ['default', 'hanging-process'] : ['default']
+
 export default defineConfig({
   root: __dirname,
   plugins: [
@@ -56,5 +61,12 @@ export default defineConfig({
     setupFiles: ['./src/test/setup.ts'],
     include: ['src/**/*.{test,spec}.{ts,tsx}'],
     css: false,
+    reporters,
+    // Fail fast instead of waiting the default 10s for teardown to time out,
+    // and make sure mocks/timers/stubs never leak from one test into the next.
+    teardownTimeout: 5000,
+    restoreMocks: true,
+    unstubGlobals: true,
+    unstubEnvs: true,
   },
 })

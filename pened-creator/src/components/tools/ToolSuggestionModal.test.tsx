@@ -84,7 +84,13 @@ describe("ToolSuggestionModal", () => {
   });
 
   afterEach(() => {
+    // Unmount first so the modal's own cleanup clears its auto-close timer,
+    // then drop any timers still pending under fake timers and go back to
+    // real ones so nothing outlives the test.
     cleanup();
+    if (vi.isFakeTimers()) {
+      vi.clearAllTimers();
+    }
     vi.useRealTimers();
     setToolSuggestionsAdapter(realToolSuggestionsAdapter);
   });
@@ -433,8 +439,14 @@ describe("ToolSuggestionModal", () => {
       const closeCalls = onOpenChangeSpy.mock.calls.filter(([value]) => value === false).length;
       expect(closeCalls).toBe(1);
 
-      // Wait past the auto-close delay to prove no second close fires.
-      await new Promise((resolve) => setTimeout(resolve, 1700));
+      // Advance past the auto-close delay (with a fake clock, not a real wait)
+      // to prove no second close fires. The cancelled timer was created with
+      // the real clock, so this also checks it was cleared rather than left
+      // pending: switch to fake timers and run everything that is scheduled.
+      vi.useFakeTimers();
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1700);
+      });
       expect(onOpenChangeSpy.mock.calls.filter(([value]) => value === false).length).toBe(1);
     });
   });
@@ -465,12 +477,20 @@ describe("ToolSuggestionModal", () => {
       render(<Harness initialOpen={false} />);
 
       const opener = screen.getByRole("button", { name: "Open modal" });
+      // Explicitly focus the opener first so the previously focused element is
+      // deterministic (a click alone doesn't reliably focus a button in jsdom).
+      act(() => {
+        opener.focus();
+      });
+      expect(opener).toHaveFocus();
+
       await user.click(opener);
       await screen.findByRole("dialog");
+      await waitFor(() => expect(getTextarea()).toHaveFocus());
 
       await user.keyboard("{Escape}");
       await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
-      await waitFor(() => expect(opener).toHaveFocus());
+      await waitFor(() => expect(opener).toHaveFocus(), { timeout: 2000 });
     });
   });
 });

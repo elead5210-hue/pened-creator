@@ -69,9 +69,18 @@ describe("GlobalToolbar context menu integration", () => {
     setToolSuggestionsAdapter(mockToolSuggestionsAdapter);
   });
 
-  afterEach(() => {
+  afterEach(async () => {
+    // Unmount first so the modal's auto-close timer is cleared by its
+    // unmount cleanup, then drop any fake timers and pending timers so
+    // nothing outlives the test and keeps the process alive.
     cleanup();
+    if (vi.isFakeTimers()) {
+      vi.clearAllTimers();
+    }
+    vi.useRealTimers();
     setToolSuggestionsAdapter(realToolSuggestionsAdapter);
+    // Let any microtasks/promises from the mock adapter settle.
+    await Promise.resolve();
   });
 
   it("renders the menu trigger alongside the existing nav links", () => {
@@ -133,6 +142,7 @@ describe("GlobalToolbar context menu integration", () => {
 
     // The modal auto-closes shortly after success.
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument(), { timeout: 4000 });
+    expect(toastSuccess).toHaveBeenCalledTimes(1);
   });
 
   it("blocks submission of a too-short description before reaching the adapter", async () => {

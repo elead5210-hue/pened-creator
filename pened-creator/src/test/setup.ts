@@ -1,10 +1,29 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup } from "@testing-library/react";
-import { afterEach } from "vitest";
+import { afterEach, vi } from "vitest";
+import {
+  realToolSuggestionsAdapter,
+  setToolSuggestionsAdapter,
+} from "@/lib/tools/toolSuggestionsClient";
 
-// Unmount rendered trees between tests so DOM state never leaks across them.
+// Unmount rendered trees between tests so DOM state never leaks across them,
+// and make sure no timers, mocks, stubs or adapter overrides outlive a test
+// (a leftover timer or listener can keep the Vitest process from exiting).
 afterEach(() => {
   cleanup();
+
+  // Drop any timers still pending under fake timers, then go back to real ones.
+  if (vi.isFakeTimers()) {
+    vi.clearAllTimers();
+  }
+  vi.useRealTimers();
+
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
+
+  // Tests may swap in a mock adapter; always go back to the real one.
+  setToolSuggestionsAdapter(realToolSuggestionsAdapter);
 });
 
 // jsdom does not implement these browser APIs, which Radix UI primitives
