@@ -54,7 +54,9 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./src/test/setup.ts'],
-    include: ['src/**/*.{test,spec}.{ts,tsx}'],
+    // scripts/**/*.test.js covers the build guards (e.g. check-api-calls.js),
+    // which are plain Node ESM files rather than part of src/.
+    include: ['src/**/*.{test,spec}.{ts,tsx}', 'scripts/**/*.test.js'],
     css: false,
   },
 })
