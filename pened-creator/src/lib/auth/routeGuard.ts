@@ -31,16 +31,12 @@ type RequireAuthLocation = {
  * match, matching redirect()'s own documented usage.
  */
 export async function requireAuth(location: RequireAuthLocation): Promise<RegisteredUser> {
-  let user: RegisteredUser | null;
-  try {
-    user = await restoreSession();
-  } catch (err) {
-    // The session state is unknown (API unreachable / 5xx after a
-    // retry). Don't redirect to /login on a refresh in that case;
-    // surface the failure so the router's error boundary handles it
-    // instead of logging out a user who may well still be signed in.
-    throw err;
-  }
+  // If the session state is unknown (API unreachable / 5xx after a retry),
+  // restoreSession() throws and that is deliberately not caught here: we
+  // don't redirect to /login on a refresh in that case, so the router's
+  // error boundary handles it instead of logging out a user who may well
+  // still be signed in.
+  const user: RegisteredUser | null = await restoreSession();
   if (!user) {
     throw redirect({
       to: "/login",

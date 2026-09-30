@@ -79,7 +79,6 @@ function VideoResultCard({ video }: { video: YoutubeSearchResultItem }) {
   return (
     <Card className="flex flex-col overflow-hidden py-0">
       <a
-      
         href={watchUrl}
         target="_blank"
         rel="noopener noreferrer"

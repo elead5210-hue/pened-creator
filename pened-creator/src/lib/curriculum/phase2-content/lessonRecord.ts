@@ -1,4 +1,3 @@
-
 import { validateLessonBreakdownDocument } from "../shared/schema";
 import { upsertSlideshowEntry, type InteractiveContentEntry } from "./slideshowInteractiveContent";
 
@@ -61,7 +60,9 @@ export const LessonStatus = Object.freeze({
 
 export type LessonStatusValue = (typeof LessonStatus)[keyof typeof LessonStatus];
 
-export const LESSON_STATUS_VALUES: LessonStatusValue[] = Object.values(LessonStatus) as LessonStatusValue[];
+export const LESSON_STATUS_VALUES: LessonStatusValue[] = Object.values(
+  LessonStatus,
+) as LessonStatusValue[];
 
 /**
  * A lesson record as created/shaped by this module (createLessonRecord /
@@ -147,7 +148,7 @@ export function isValidLessonBreakdown(data: unknown): boolean {
  * @throws if breakdownJson fails the shared schema validation; the
  *   error message concatenates all field-level validation messages.
  */
-export function createLessonRecord(breakdownJson: any): LessonRecordShape {
+export function createLessonRecord(breakdownJson: unknown): LessonRecordShape {
   const { valid, errors } = validateLessonBreakdownDocument(breakdownJson);
 
   if (!valid) {
@@ -156,7 +157,10 @@ export function createLessonRecord(breakdownJson: any): LessonRecordShape {
   }
 
   const now = new Date().toISOString();
-  const { project_id, lesson_node_id } = breakdownJson;
+  const { project_id, lesson_node_id } = breakdownJson as {
+    project_id: string;
+    lesson_node_id: string;
+  };
 
   return {
     id: buildLessonId(project_id, lesson_node_id),
@@ -198,7 +202,10 @@ export function updateLessonRecord(
  * Transitions a lesson record to a new status, validating the value
  * against the known LessonStatus enum.
  */
-export function setLessonStatus(lessonRecord: LessonRecordShape, status: string): LessonRecordShape {
+export function setLessonStatus(
+  lessonRecord: LessonRecordShape,
+  status: string,
+): LessonRecordShape {
   if (!LESSON_STATUS_VALUES.includes(status as LessonStatusValue)) {
     throw new Error(`Invalid lesson status: ${status}`);
   }

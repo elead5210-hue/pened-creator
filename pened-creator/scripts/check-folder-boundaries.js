@@ -57,8 +57,14 @@ const SRC_DIR = path.join(PROJECT_ROOT, "src");
  * it) is never shadowed by a shorter one.
  */
 const BOUNDARIES = [
-  { folder: "components/curriculum/phase1-tree", readme: "components/curriculum/phase1-tree/README.md" },
-  { folder: "components/curriculum/phase2-content", readme: "components/curriculum/phase2-content/README.md" },
+  {
+    folder: "components/curriculum/phase1-tree",
+    readme: "components/curriculum/phase1-tree/README.md",
+  },
+  {
+    folder: "components/curriculum/phase2-content",
+    readme: "components/curriculum/phase2-content/README.md",
+  },
   { folder: "components/shell", readme: "components/shell/README.md" },
   { folder: "components/tools", readme: "components/tools/README.md" },
   { folder: "components/ui", readme: "components/ui/README.md" },
@@ -285,12 +291,22 @@ function main() {
 
       if (readmeText === null) {
         missingReadmes.add(owner.readme);
-        violations.push({ file: relPath, specifier: readableSpecifier, readme: owner.readme, reason: "no README" });
+        violations.push({
+          file: relPath,
+          specifier: readableSpecifier,
+          readme: owner.readme,
+          reason: "no README",
+        });
         continue;
       }
 
       if (!isDeclaredInReadme(readmeText, readableSpecifier)) {
-        violations.push({ file: relPath, specifier: readableSpecifier, readme: owner.readme, reason: "undocumented" });
+        violations.push({
+          file: relPath,
+          specifier: readableSpecifier,
+          readme: owner.readme,
+          reason: "undocumented",
+        });
       }
     }
   }
@@ -338,7 +354,7 @@ function main() {
 
   console.error(
     `${violations.length} undocumented cross-folder import${violations.length === 1 ? "" : "s"} found. ` +
-      "Add the import to the listed README's \"Parent dependencies\" section (or, if the import " +
+      'Add the import to the listed README\'s "Parent dependencies" section (or, if the import ' +
       "shouldn't exist, remove it) before merging.",
   );
   process.exitCode = 1;

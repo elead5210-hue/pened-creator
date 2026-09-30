@@ -28,7 +28,9 @@ describe("check-api-calls: checkSource", () => {
     });
 
     it("flags a relative /api path even when init options follow", () => {
-      const violations = checkSource('fetch("/api/tool-suggestions", { method: "POST", credentials: "include" });');
+      const violations = checkSource(
+        'fetch("/api/tool-suggestions", { method: "POST", credentials: "include" });',
+      );
 
       expect(violations).toHaveLength(1);
       expect(violations[0].rule).toMatch(RELATIVE_RULE);
@@ -64,7 +66,7 @@ describe("check-api-calls: checkSource", () => {
     });
 
     it("reports the line number of each violation", () => {
-      const source = ['const a = 1;', 'fetch("/api/a");', "", "fetch(other);"].join("\n");
+      const source = ["const a = 1;", 'fetch("/api/a");', "", "fetch(other);"].join("\n");
 
       expect(checkSource(source).map((v) => v.line)).toEqual([2, 4]);
     });
@@ -72,7 +74,8 @@ describe("check-api-calls: checkSource", () => {
 
   describe("allows calls built with apiUrl()", () => {
     it("passes fetch(apiUrl(path), init)", () => {
-      const source = 'const res = await fetch(apiUrl(TOOL_SUGGESTIONS_PATH), { credentials: "include" });';
+      const source =
+        'const res = await fetch(apiUrl(TOOL_SUGGESTIONS_PATH), { credentials: "include" });';
 
       expect(checkSource(source)).toEqual([]);
     });
@@ -115,9 +118,11 @@ describe("check-api-calls: checkSource", () => {
     it("ignores a class method named fetch, including static and typed ones", () => {
       expect(checkSource("class A {\n  fetch(input) {\n    return 1;\n  }\n}")).toEqual([]);
       expect(checkSource("class A {\n  static fetch(input) {\n    return 1;\n  }\n}")).toEqual([]);
-      expect(checkSource("class A {\n  async fetch(input: Request): Promise<Response> {\n    return r;\n  }\n}")).toEqual(
-        [],
-      );
+      expect(
+        checkSource(
+          "class A {\n  async fetch(input: Request): Promise<Response> {\n    return r;\n  }\n}",
+        ),
+      ).toEqual([]);
     });
 
     it("ignores a function declaration named fetch", () => {
@@ -145,7 +150,9 @@ describe("check-api-calls: checkSource", () => {
     });
 
     it("ignores fetch( inside a block comment", () => {
-      expect(checkSource('/*\n * Never call fetch("/api/tools") directly.\n */\nconst x = 1;')).toEqual([]);
+      expect(
+        checkSource('/*\n * Never call fetch("/api/tools") directly.\n */\nconst x = 1;'),
+      ).toEqual([]);
     });
 
     it("ignores fetch( inside string literals", () => {

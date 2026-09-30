@@ -1,4 +1,3 @@
-
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { ArrowRight, Copy, X } from "lucide-react";
@@ -12,7 +11,13 @@ import {
   PROJECT_ID,
   type CurriculumNode,
 } from "@/lib/curriculum/shared/schema";
-import { ensureLessonFromBreakdown, getLesson, getLessonBreakdown, saveLessonBreakdown, subscribe } from "@/lib/curriculum/shared/db";
+import {
+  ensureLessonFromBreakdown,
+  getLesson,
+  getLessonBreakdown,
+  saveLessonBreakdown,
+  subscribe,
+} from "@/lib/curriculum/shared/db";
 import { ApiError } from "@/lib/curriculum/shared/apiClient";
 
 interface LessonBreakdownPanelProps {
@@ -31,9 +36,7 @@ interface LessonBreakdownPanelProps {
  * rejected. */
 function describeCheckError(err: unknown): string {
   if (err instanceof ApiError) {
-    return err.status === 0
-      ? "Couldn't reach the server. Check your connection."
-      : err.message;
+    return err.status === 0 ? "Couldn't reach the server. Check your connection." : err.message;
   }
   return err instanceof Error ? err.message : "Something went wrong.";
 }
@@ -151,7 +154,9 @@ export function LessonBreakdownPanel({ node, tree, onClose, onSaved }: LessonBre
     setError(null);
 
     if (!node.id) {
-      setError("This lesson node has no id yet - re-import the tree before generating a breakdown.");
+      setError(
+        "This lesson node has no id yet - re-import the tree before generating a breakdown.",
+      );
       return;
     }
 
@@ -169,21 +174,21 @@ export function LessonBreakdownPanel({ node, tree, onClose, onSaved }: LessonBre
       setError(
         firstIssue
           ? `Response didn't match the expected shape: ${firstIssue.path.join(".") || "(root)"} - ${firstIssue.message}`
-          : "Response didn't match the expected shape."
+          : "Response didn't match the expected shape.",
       );
       return;
     }
 
     if (result.data.project_id !== PROJECT_ID) {
       setError(
-        `This response is for a different project (project_id "${result.data.project_id}" doesn't match this project). Paste the reply generated for this project instead.`
+        `This response is for a different project (project_id "${result.data.project_id}" doesn't match this project). Paste the reply generated for this project instead.`,
       );
       return;
     }
 
     if (result.data.lesson_node_id !== node.id) {
       setError(
-        `This response is for a different lesson (lesson_node_id "${result.data.lesson_node_id}" doesn't match "${node.id}"). Paste the reply generated for this lesson instead.`
+        `This response is for a different lesson (lesson_node_id "${result.data.lesson_node_id}" doesn't match "${node.id}"). Paste the reply generated for this lesson instead.`,
       );
       return;
     }
@@ -224,7 +229,7 @@ export function LessonBreakdownPanel({ node, tree, onClose, onSaved }: LessonBre
       setError(
         err instanceof Error
           ? `Couldn't save this breakdown: ${err.message}`
-          : "Couldn't save this breakdown."
+          : "Couldn't save this breakdown.",
       );
     } finally {
       setIsSaving(false);
@@ -302,7 +307,11 @@ export function LessonBreakdownPanel({ node, tree, onClose, onSaved }: LessonBre
               onClick={handleSave}
               disabled={isSaving || isCheckingExisting || pastedText.trim().length === 0}
             >
-              {isSaving ? "Saving..." : hasSavedBreakdown ? "Regenerate breakdown" : "Save breakdown"}
+              {isSaving
+                ? "Saving..."
+                : hasSavedBreakdown
+                  ? "Regenerate breakdown"
+                  : "Save breakdown"}
             </Button>
             <Button size="sm" variant="ghost" onClick={onClose} disabled={isSaving}>
               Cancel

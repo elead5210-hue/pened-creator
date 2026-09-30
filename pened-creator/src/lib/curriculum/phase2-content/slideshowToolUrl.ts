@@ -1,4 +1,3 @@
-
 import { getToolRendererBaseUrl } from "@/lib/toolRenderer/config";
 
 /**
@@ -47,8 +46,7 @@ export type SlideshowLinkErrorReason = "invalid-lesson-id" | "not-configured" | 
  * couldn't be built with a message that is safe to show to the user.
  */
 export type SlideshowLinkResult =
-  | { ok: true; url: string }
-  | { ok: false; reason: SlideshowLinkErrorReason; message: string };
+  { ok: true; url: string } | { ok: false; reason: SlideshowLinkErrorReason; message: string };
 
 /**
  * Builds the full, clickable slideshow link for a lesson id: the pened-tools

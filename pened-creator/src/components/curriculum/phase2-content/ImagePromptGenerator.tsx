@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Copy, Download, ImagePlus } from "lucide-react";
 import { toast } from "sonner";
@@ -9,7 +8,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { copyTextToClipboard, downloadTextFile, buildImagePromptFilename } from "@/lib/curriculum/phase2-content/download";
+import {
+  copyTextToClipboard,
+  downloadTextFile,
+  buildImagePromptFilename,
+} from "@/lib/curriculum/phase2-content/download";
 import { buildImagePromptRequest } from "@/lib/curriculum/phase2-content/imagePromptBuilder";
 import type { LessonRecord } from "@/lib/curriculum/shared/db";
 import { PasteImagePromptResponseForm } from "./PasteImagePromptResponseForm";
@@ -91,7 +94,12 @@ export default function ImagePromptGenerator({
     setMinImages(min);
     setMaxImages(max);
 
-    const request = buildImagePromptRequest(generatedContent as unknown[], min, max, noOnImageText);
+    const request = buildImagePromptRequest(
+      generatedContent as Record<string, unknown>[],
+      min,
+      max,
+      noOnImageText,
+    );
     setPrompt(request);
   }
 
@@ -134,13 +142,13 @@ export default function ImagePromptGenerator({
           <CardContent className="space-y-4">
             {!hasContent ? (
               <p className="text-sm text-muted-foreground">
-                Generate this lesson's content first — the image prompt request is built
-                directly from the saved generated content.
+                Generate this lesson's content first — the image prompt request is built directly
+                from the saved generated content.
               </p>
             ) : (
               <p className="text-sm text-muted-foreground">
-                Using this lesson's saved generated content. Adjust the options below, then
-                build the instruction prompt to send to an AI.
+                Using this lesson's saved generated content. Adjust the options below, then build
+                the instruction prompt to send to an AI.
               </p>
             )}
 
@@ -204,7 +212,9 @@ export default function ImagePromptGenerator({
         {/* STEP 2: output */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-            <CardTitle className="text-sm font-semibold">Step 2 — Prompt to send to an AI</CardTitle>
+            <CardTitle className="text-sm font-semibold">
+              Step 2 — Prompt to send to an AI
+            </CardTitle>
             <div className="flex gap-2">
               <Button
                 type="button"
@@ -244,7 +254,9 @@ export default function ImagePromptGenerator({
           </CardContent>
           <CardFooter>
             <span className="font-mono text-xs text-muted-foreground">
-              {hasPrompt ? "Prompt generated — copy it and paste it to an AI" : "Nothing generated yet"}
+              {hasPrompt
+                ? "Prompt generated — copy it and paste it to an AI"
+                : "Nothing generated yet"}
             </span>
           </CardFooter>
         </Card>

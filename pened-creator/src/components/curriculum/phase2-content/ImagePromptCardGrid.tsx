@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -177,12 +176,7 @@ export function ImagePromptCardGrid({ lessonRecord, onSaved }: ImagePromptCardGr
       ) : null}
 
       <div className="flex items-center justify-between gap-2">
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={goToPrevious}
-          disabled={safeIndex === 0}
-        >
+        <Button size="sm" variant="outline" onClick={goToPrevious} disabled={safeIndex === 0}>
           Previous
         </Button>
         <span className="font-mono text-xs text-muted-foreground">

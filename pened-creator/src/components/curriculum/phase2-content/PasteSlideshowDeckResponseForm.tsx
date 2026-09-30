@@ -1,12 +1,19 @@
-
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { saveSlideshowDeck, SlideshowSaveError, type LessonRecord } from "@/lib/curriculum/shared/db";
+import {
+  saveSlideshowDeck,
+  SlideshowSaveError,
+  type LessonRecord,
+} from "@/lib/curriculum/shared/db";
 import { ApiError } from "@/lib/curriculum/shared/apiClient";
-import { parseDeckJson, validateDeck, type DeckError } from "@/lib/curriculum/phase2-content/slideshowDeckValidator";
+import {
+  parseDeckJson,
+  validateDeck,
+  type DeckError,
+} from "@/lib/curriculum/phase2-content/slideshowDeckValidator";
 
 const PLACEHOLDER_JSON =
   '{\n  "version": "v1",\n  "id": "...",\n  "metadata": { "title": "..." },\n  "slides": [\n    {\n      "id": "slide-1",\n      "elements": [ ... ]\n    }\n  ]\n}';
@@ -40,7 +47,9 @@ function describeSaveError(err: unknown): string {
     }
     return err.message;
   }
-  return err instanceof Error ? err.message : "Failed to save the slideshow deck. Please try again.";
+  return err instanceof Error
+    ? err.message
+    : "Failed to save the slideshow deck. Please try again.";
 }
 
 /**
@@ -193,25 +202,34 @@ export function PasteSlideshowDeckResponseForm({
         </div>
 
         {summaryError ? (
-          <div role="alert" className="space-y-1 rounded-md border border-destructive/50 bg-destructive/10 p-3">
+          <div
+            role="alert"
+            className="space-y-1 rounded-md border border-destructive/50 bg-destructive/10 p-3"
+          >
             <p className="text-xs font-medium text-destructive">{summaryError}</p>
           </div>
         ) : null}
 
         {saveError ? (
-          <div role="alert" className="space-y-1 rounded-md border border-destructive/50 bg-destructive/10 p-3">
+          <div
+            role="alert"
+            className="space-y-1 rounded-md border border-destructive/50 bg-destructive/10 p-3"
+          >
             <p className="text-xs font-medium text-destructive">
               The slideshow data wasn't saved: {saveError}
             </p>
             <p className="text-xs text-muted-foreground">
-              Your pasted response is still here and it passed validation. Fix the problem above, then
-              save again.
+              Your pasted response is still here and it passed validation. Fix the problem above,
+              then save again.
             </p>
           </div>
         ) : null}
 
         {hasFieldErrors ? (
-          <div role="alert" className="space-y-2 rounded-md border border-destructive/50 bg-destructive/10 p-3">
+          <div
+            role="alert"
+            className="space-y-2 rounded-md border border-destructive/50 bg-destructive/10 p-3"
+          >
             <p className="text-xs font-medium text-destructive">
               {fieldErrors.length === 1
                 ? "1 problem was found with the pasted deck. It wasn't saved, because pened-tools couldn't play it as it is:"

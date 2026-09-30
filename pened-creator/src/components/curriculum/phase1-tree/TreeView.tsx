@@ -1,4 +1,3 @@
-
 import { ChevronRight, FolderTree, FileText, HelpCircle } from "lucide-react";
 import type { CurriculumNode } from "@/lib/curriculum/shared/schema";
 import { LESSON_NODE_TYPE } from "@/lib/curriculum/shared/schema";
@@ -185,7 +184,10 @@ function NodeRow({
         )}
       </div>
       {hasChildren && open && (
-        <ul className="border-l border-border/70" style={{ marginLeft: `${depth * 1.25 + 0.9}rem` }}>
+        <ul
+          className="border-l border-border/70"
+          style={{ marginLeft: `${depth * 1.25 + 0.9}rem` }}
+        >
           {children.map((child, i) => (
             <NodeRow
               key={getNodeKey(child, i)}

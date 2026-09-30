@@ -208,7 +208,12 @@ export function buildSlideshowDeck(
     durationSeconds: block.slide.durationSeconds,
     transition: block.slide.transition,
     background: block.slide.background,
-    images: resolveImagesForBlock(block.tool, resolvedImagePrompts, resolvedImages, resolvedImagesNoBg),
+    images: resolveImagesForBlock(
+      block.tool,
+      resolvedImagePrompts,
+      resolvedImages,
+      resolvedImagesNoBg,
+    ),
   }));
 
   return {

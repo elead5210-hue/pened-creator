@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -177,13 +176,19 @@ export function PasteResponseForm({ lessonId, onSaved, onCancel }: PasteResponse
         </div>
 
         {summaryError ? (
-          <div role="alert" className="space-y-1 rounded-md border border-destructive/50 bg-destructive/10 p-3">
+          <div
+            role="alert"
+            className="space-y-1 rounded-md border border-destructive/50 bg-destructive/10 p-3"
+          >
             <p className="text-xs font-medium text-destructive">{summaryError}</p>
           </div>
         ) : null}
 
         {hasFieldErrors ? (
-          <div role="alert" className="space-y-2 rounded-md border border-destructive/50 bg-destructive/10 p-3">
+          <div
+            role="alert"
+            className="space-y-2 rounded-md border border-destructive/50 bg-destructive/10 p-3"
+          >
             <p className="text-xs font-medium text-destructive">
               {fieldErrors.length === 1
                 ? "1 problem was found with the pasted response:"
@@ -192,7 +197,9 @@ export function PasteResponseForm({ lessonId, onSaved, onCancel }: PasteResponse
             <ul className="list-disc space-y-1 pl-4 text-xs text-destructive">
               {fieldErrors.map((error, index) => (
                 <li key={`${error.blockIndex}-${error.path}-${index}`}>
-                  {error.blockIndex >= 0 ? `Block ${error.blockIndex}: ${error.message}` : error.message}
+                  {error.blockIndex >= 0
+                    ? `Block ${error.blockIndex}: ${error.message}`
+                    : error.message}
                 </li>
               ))}
             </ul>

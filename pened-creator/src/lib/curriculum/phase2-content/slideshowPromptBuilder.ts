@@ -1,4 +1,3 @@
-
 /**
  * Builds the Phase 2 "Generate Slideshow Data" (step 7) AI prompt from a
  * lesson's already-saved Phase 2 output, asking an AI to convert that
@@ -28,9 +27,7 @@
  */
 
 /** Loosely-typed shape of a lesson's saved generated content blocks. */
-export type GeneratedContentJson =
-  | Record<string, unknown>
-  | Record<string, unknown>[];
+export type GeneratedContentJson = Record<string, unknown> | Record<string, unknown>[];
 
 /** Loosely-typed shape of a single saved image-prompt item (see ./imagePromptBuilder.ts). */
 export interface SlideshowPromptImageAsset {
@@ -620,7 +617,11 @@ export function buildSlideshowPromptRequest(
       ].join("\n")
     : JSON.stringify(lessonContent, null, 2);
 
-  const prompt = [INSTRUCTION_BEFORE_CONTENT, serializedContentSection, INSTRUCTION_AFTER_CONTENT].join("\n");
+  const prompt = [
+    INSTRUCTION_BEFORE_CONTENT,
+    serializedContentSection,
+    INSTRUCTION_AFTER_CONTENT,
+  ].join("\n");
 
   return {
     prompt,

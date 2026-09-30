@@ -275,7 +275,9 @@ function main() {
     process.exit(1);
   }
 
-  console.log(`check-api-calls: OK (${scanned} files scanned, no API calls bypass the shared client).`);
+  console.log(
+    `check-api-calls: OK (${scanned} files scanned, no API calls bypass the shared client).`,
+  );
 }
 
 /**

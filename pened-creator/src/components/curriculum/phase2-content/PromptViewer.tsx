@@ -1,11 +1,14 @@
-
 import { useState } from "react";
 import { X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { downloadTextFile, buildPromptFilename, copyTextToClipboard } from "@/lib/curriculum/phase2-content/download";
+import {
+  downloadTextFile,
+  buildPromptFilename,
+  copyTextToClipboard,
+} from "@/lib/curriculum/phase2-content/download";
 
 interface PromptViewerProps {
   /** The generated prompt text to display. */

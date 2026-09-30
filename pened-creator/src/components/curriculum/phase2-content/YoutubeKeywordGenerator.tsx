@@ -1,4 +1,3 @@
-
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,12 +5,24 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Copy, Download, Check, RefreshCw, Youtube, Loader2, AlertCircle, Inbox } from "lucide-react";
+import {
+  Copy,
+  Download,
+  Check,
+  RefreshCw,
+  Youtube,
+  Loader2,
+  AlertCircle,
+  Inbox,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { buildYoutubeKeywordPromptRequest } from "@/lib/curriculum/phase2-content/youtubeKeywordPromptBuilder";
 import { copyTextToClipboard, downloadTextFile } from "@/lib/curriculum/phase2-content/download";
-import { searchYoutubeVideos, type YoutubeSearchResultItem } from "@/lib/curriculum/phase2-content/youtubeClient";
+import {
+  searchYoutubeVideos,
+  type YoutubeSearchResultItem,
+} from "@/lib/curriculum/phase2-content/youtubeClient";
 import { ApiError } from "@/lib/curriculum/shared/apiClient";
 import { PasteYoutubeKeywordResponseForm } from "./PasteYoutubeKeywordResponseForm";
 import { YoutubeSearchResults } from "./YoutubeSearchResults";
@@ -102,7 +113,10 @@ export function YoutubeKeywordGenerator({
   const [sessionCleared, setSessionCleared] = useState(false);
 
   const prompt = useMemo(
-    () => buildYoutubeKeywordPromptRequest(lessonRecord.generatedContent ?? []),
+    () =>
+      buildYoutubeKeywordPromptRequest(
+        (lessonRecord.generatedContent ?? []) as Record<string, unknown>[],
+      ),
     [lessonRecord.generatedContent],
   );
 
@@ -329,7 +343,12 @@ export function YoutubeKeywordGenerator({
               {isRepasting && (
                 <div className="flex items-center justify-between rounded-md border border-dashed p-3 text-sm text-muted-foreground">
                   <span>Pasting a new response will replace the current saved keywords.</span>
-                  <Button type="button" variant="ghost" size="sm" onClick={() => setIsRepasting(false)}>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setIsRepasting(false)}
+                  >
                     Cancel
                   </Button>
                 </div>
@@ -352,7 +371,12 @@ export function YoutubeKeywordGenerator({
                 ))}
               </div>
               <Separator />
-              <Button type="button" variant="outline" size="sm" onClick={() => setIsRepasting(true)}>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setIsRepasting(true)}
+              >
                 <RefreshCw className="mr-2 h-4 w-4" />
                 Paste a different response
               </Button>
@@ -374,8 +398,8 @@ export function YoutubeKeywordGenerator({
         <CardHeader>
           <CardTitle className="text-base">YouTube results</CardTitle>
           <CardDescription>
-            Videos found for each saved keyword. These results are not saved — only the keywords
-            and the pasted response above are, and they're searched again each time you return.
+            Videos found for each saved keyword. These results are not saved — only the keywords and
+            the pasted response above are, and they're searched again each time you return.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -399,8 +423,8 @@ export function YoutubeKeywordGenerator({
                     No keywords generated or pasted yet
                   </p>
                   <p className="max-w-sm text-sm text-muted-foreground">
-                    Complete Steps 1–3 above — generate the prompt, run it through an AI, and
-                    paste the response back in — and matching videos will appear here.
+                    Complete Steps 1–3 above — generate the prompt, run it through an AI, and paste
+                    the response back in — and matching videos will appear here.
                   </p>
                 </>
               )}

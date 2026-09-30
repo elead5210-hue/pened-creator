@@ -1,10 +1,13 @@
-
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { validateYoutubeKeywordResponse, type YoutubeKeywordItem, type YoutubeKeywordValidationError } from "@/lib/curriculum/shared/schema";
+import {
+  validateYoutubeKeywordResponse,
+  type YoutubeKeywordItem,
+  type YoutubeKeywordValidationError,
+} from "@/lib/curriculum/shared/schema";
 import { saveYoutubeKeywordResponse } from "@/lib/curriculum/shared/db";
 import { ApiError } from "@/lib/curriculum/shared/apiClient";
 
@@ -159,9 +162,8 @@ export function PasteYoutubeKeywordResponseForm({
         <CardTitle>Paste the AI's Response</CardTitle>
         <CardDescription>
           Paste the AI's reply to the keyword request below — the JSON array of search keywords
-          (markdown code fences are fine, they'll be stripped automatically). It will be
-          validated and then saved with this lesson, so it's still here if you leave and come
-          back.
+          (markdown code fences are fine, they'll be stripped automatically). It will be validated
+          and then saved with this lesson, so it's still here if you leave and come back.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -183,13 +185,19 @@ export function PasteYoutubeKeywordResponseForm({
         </div>
 
         {summaryError ? (
-          <div role="alert" className="space-y-1 rounded-md border border-destructive/50 bg-destructive/10 p-3">
+          <div
+            role="alert"
+            className="space-y-1 rounded-md border border-destructive/50 bg-destructive/10 p-3"
+          >
             <p className="text-xs font-medium text-destructive">{summaryError}</p>
           </div>
         ) : null}
 
         {hasFieldErrors ? (
-          <div role="alert" className="space-y-2 rounded-md border border-destructive/50 bg-destructive/10 p-3">
+          <div
+            role="alert"
+            className="space-y-2 rounded-md border border-destructive/50 bg-destructive/10 p-3"
+          >
             <p className="text-xs font-medium text-destructive">
               {fieldErrors.length === 1
                 ? "1 problem was found with the pasted response:"

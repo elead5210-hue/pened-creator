@@ -1,4 +1,3 @@
-
 /**
  * Small browser download/clipboard utilities. Used to let the user save
  * generated text (e.g. an AI prompt) to disk as a .txt file, via a Blob

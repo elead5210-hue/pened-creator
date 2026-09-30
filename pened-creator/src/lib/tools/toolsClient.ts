@@ -1,4 +1,3 @@
-
 /**
  * Read-only data layer for the Tools registry, talking to the same
  * penedv1-server /api/tools endpoints pened-admin's toolsClient.ts uses

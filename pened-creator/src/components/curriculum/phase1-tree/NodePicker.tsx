@@ -160,7 +160,9 @@ export function NodePicker({
                     className="flex-col items-start gap-0.5 py-2"
                   >
                     <div className="flex w-full items-center gap-2">
-                      <Check className={cn("size-4 shrink-0", isSelected ? "opacity-100" : "opacity-0")} />
+                      <Check
+                        className={cn("size-4 shrink-0", isSelected ? "opacity-100" : "opacity-0")}
+                      />
                       <span className="truncate text-sm font-medium">{entry.node.label}</span>
                       <span className="shrink-0 rounded-full border border-border bg-secondary px-1.5 py-0 font-mono text-[10px] tracking-wide text-secondary-foreground uppercase">
                         {entry.node.type}
@@ -173,7 +175,9 @@ export function NodePicker({
                       )}
                     </div>
                     {breadcrumb && (
-                      <span className="truncate pl-6 text-xs text-muted-foreground">{breadcrumb}</span>
+                      <span className="truncate pl-6 text-xs text-muted-foreground">
+                        {breadcrumb}
+                      </span>
                     )}
                   </CommandItem>
                 );

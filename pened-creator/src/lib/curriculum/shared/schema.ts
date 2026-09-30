@@ -168,7 +168,10 @@ export type NodeHint = {
  *  2. Any existing node's label mentioned verbatim in the summary text.
  * A node is only ever reported once, under whichever match found it first.
  */
-export function extractNodeHints(summaryText: string | undefined, tree: CurriculumNode | null): NodeHint[] {
+export function extractNodeHints(
+  summaryText: string | undefined,
+  tree: CurriculumNode | null,
+): NodeHint[] {
   const hints: NodeHint[] = [];
   if (!summaryText || !tree) return hints;
 
@@ -556,10 +559,9 @@ export const imagePromptItemSchema: z.ZodType<ImagePromptItem> = z.object({
 });
 
 /** An array of AI-proposed image prompts, as pasted back by the user. */
-export const imagePromptResponseSchema = z.array(imagePromptItemSchema).min(
-  1,
-  "at least one image prompt is required",
-);
+export const imagePromptResponseSchema = z
+  .array(imagePromptItemSchema)
+  .min(1, "at least one image prompt is required");
 
 /**
  * Field-level error entry describing what's wrong with one entry (or the
@@ -643,10 +645,9 @@ export const youtubeKeywordItemSchema: z.ZodType<YoutubeKeywordItem> = z.object(
 });
 
 /** An array of AI-proposed YouTube search keywords, as pasted back by the user. */
-export const youtubeKeywordResponseSchema = z.array(youtubeKeywordItemSchema).min(
-  1,
-  "at least one keyword is required",
-);
+export const youtubeKeywordResponseSchema = z
+  .array(youtubeKeywordItemSchema)
+  .min(1, "at least one keyword is required");
 
 /**
  * Field-level error entry describing what's wrong with one entry (or the
@@ -786,7 +787,11 @@ export const interactiveContentEntrySchema: z.ZodType<
   })
   .passthrough()
   .refine((entry) => "data" in entry, { message: "data is required", path: ["data"] })
-  .transform((entry): InteractiveContentEntry => ({ ...entry, tool: entry.tool, data: entry.data }));
+  .transform((entry): InteractiveContentEntry => ({
+    ...entry,
+    tool: entry.tool,
+    data: entry.data,
+  }));
 
 /**
  * Response body of GET /api/lessons/:lessonId/interactive-content:

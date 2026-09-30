@@ -14,14 +14,25 @@ import {
 // ---------------------------------------------------------------------------
 
 vi.mock("@tanstack/react-router", () => ({
-  Link: ({ to, children, className }: { to: string; children: React.ReactNode; className?: string }) => (
+  Link: ({
+    to,
+    children,
+    className,
+  }: {
+    to: string;
+    children: React.ReactNode;
+    className?: string;
+  }) => (
     <a href={to} className={className}>
       {children}
     </a>
   ),
   useNavigate: () => vi.fn(),
-  useRouterState: ({ select }: { select: (state: { location: { pathname: string } }) => unknown }) =>
-    select({ location: { pathname: "/" } }),
+  useRouterState: ({
+    select,
+  }: {
+    select: (state: { location: { pathname: string } }) => unknown;
+  }) => select({ location: { pathname: "/" } }),
 }));
 
 vi.mock("@/lib/auth/AuthContext", () => ({
@@ -77,7 +88,9 @@ describe("GlobalToolbar context menu integration", () => {
   it("renders the menu trigger alongside the existing nav links", () => {
     render(<ShellHarness />);
 
-    expect(screen.getByTestId("global-nav-context-menu-trigger")).toHaveAccessibleName("Open navigation menu");
+    expect(screen.getByTestId("global-nav-context-menu-trigger")).toHaveAccessibleName(
+      "Open navigation menu",
+    );
     expect(screen.getByText("Curriculum Tree")).toBeInTheDocument();
     expect(screen.getByText("Content Generation")).toBeInTheDocument();
     expect(screen.getByText("Tool Registry")).toBeInTheDocument();
@@ -128,11 +141,15 @@ describe("GlobalToolbar context menu integration", () => {
     await user.click(screen.getByTestId("tool-suggestion-submit"));
 
     // The mock adapter simulates ~400ms latency, so the loading state shows first.
-    expect(await screen.findByTestId("tool-suggestion-success", undefined, { timeout: 3000 })).toBeInTheDocument();
+    expect(
+      await screen.findByTestId("tool-suggestion-success", undefined, { timeout: 3000 }),
+    ).toBeInTheDocument();
     expect(toastSuccess).toHaveBeenCalledTimes(1);
 
     // The modal auto-closes shortly after success.
-    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument(), { timeout: 4000 });
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument(), {
+      timeout: 4000,
+    });
   });
 
   it("blocks submission of a too-short description before reaching the adapter", async () => {
@@ -143,7 +160,9 @@ describe("GlobalToolbar context menu integration", () => {
     await user.type(screen.getByTestId("tool-suggestion-description"), "too short");
     await user.click(screen.getByTestId("tool-suggestion-submit"));
 
-    expect(await screen.findByText("Description must be at least 10 characters.")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Description must be at least 10 characters."),
+    ).toBeInTheDocument();
     expect(screen.queryByTestId("tool-suggestion-success")).not.toBeInTheDocument();
     expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
@@ -156,9 +175,9 @@ describe("GlobalToolbar context menu integration", () => {
     await user.type(screen.getByTestId("tool-suggestion-description"), "simulate-error");
     await user.click(screen.getByTestId("tool-suggestion-submit"));
 
-    expect(await screen.findByTestId("tool-suggestion-form-error", undefined, { timeout: 3000 })).toHaveTextContent(
-      "Something went wrong. Please try again.",
-    );
+    expect(
+      await screen.findByTestId("tool-suggestion-form-error", undefined, { timeout: 3000 }),
+    ).toHaveTextContent("Something went wrong. Please try again.");
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(screen.getByTestId("tool-suggestion-description")).toHaveValue("simulate-error");
   });

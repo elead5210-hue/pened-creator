@@ -1,13 +1,20 @@
-
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { BookCheck, LogOut, TreeDeciduous, Wrench } from "lucide-react";
 import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
-import { getLesson, getLessonBreakdown, subscribe, type LessonRecord } from "@/lib/curriculum/shared/db";
+import {
+  getLesson,
+  getLessonBreakdown,
+  subscribe,
+  type LessonRecord,
+} from "@/lib/curriculum/shared/db";
 import { PROJECT_ID } from "@/lib/curriculum/shared/schema";
-import { computeLessonPipelineStage, type PipelineStage } from "@/lib/curriculum/shared/lessonPipelineStatus";
+import {
+  computeLessonPipelineStage,
+  type PipelineStage,
+} from "@/lib/curriculum/shared/lessonPipelineStatus";
 import { LessonPipelineBadge } from "@/components/shell/LessonPipelineBadge";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -135,7 +142,11 @@ function ToolbarLink({ to, active, disabled, icon, label, sublabel, badge }: Too
 
   if (disabled) {
     return (
-      <span className={sharedClassName} aria-disabled="true" title="Open a lesson from the curriculum tree first">
+      <span
+        className={sharedClassName}
+        aria-disabled="true"
+        title="Open a lesson from the curriculum tree first"
+      >
         {content}
       </span>
     );
@@ -233,7 +244,10 @@ export function GlobalToolbar() {
             lessonPipelineStage ? (
               <LessonPipelineBadge
                 stage={lessonPipelineStage}
-                className={cn(activeView === "content" && "border-primary-foreground/30 bg-primary-foreground/10 text-primary-foreground")}
+                className={cn(
+                  activeView === "content" &&
+                    "border-primary-foreground/30 bg-primary-foreground/10 text-primary-foreground",
+                )}
               />
             ) : undefined
           }
@@ -259,7 +273,10 @@ export function GlobalToolbar() {
           </Button>
         ) : null}
       </div>
-      <ToolSuggestionModal open={isToolSuggestionModalOpen} onOpenChange={setIsToolSuggestionModalOpen} />
+      <ToolSuggestionModal
+        open={isToolSuggestionModalOpen}
+        onOpenChange={setIsToolSuggestionModalOpen}
+      />
     </div>
   );
 }

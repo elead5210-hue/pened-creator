@@ -28,7 +28,11 @@ async function captureError(promise: Promise<unknown>): Promise<ToolSuggestionsA
   throw new Error("Expected the promise to reject, but it resolved.");
 }
 
-function jsonResponse(status: number, body: unknown, headers: Record<string, string> = {}): Response {
+function jsonResponse(
+  status: number,
+  body: unknown,
+  headers: Record<string, string> = {},
+): Response {
   return new Response(JSON.stringify(body), {
     status,
     headers: { "Content-Type": "application/json", ...headers },
@@ -281,7 +285,9 @@ describe("real adapter", () => {
 
   it("maps a 401 response to an unauthenticated error", async () => {
     fetchMock.mockResolvedValueOnce(
-      jsonResponse(401, { error: { code: "UNAUTHENTICATED", message: "Please sign in to continue." } }),
+      jsonResponse(401, {
+        error: { code: "UNAUTHENTICATED", message: "Please sign in to continue." },
+      }),
     );
 
     const error = await captureError(submitToolSuggestion({ description: VALID_DESCRIPTION }));
@@ -294,7 +300,9 @@ describe("real adapter", () => {
     fetchMock.mockResolvedValueOnce(
       jsonResponse(
         429,
-        { error: { code: "RATE_LIMITED", message: "Too many suggestions. Please try again later." } },
+        {
+          error: { code: "RATE_LIMITED", message: "Too many suggestions. Please try again later." },
+        },
         { "Retry-After": "1800" },
       ),
     );
@@ -410,7 +418,9 @@ describe("real adapter", () => {
 
     it("maps a 401 response to an unauthenticated error", async () => {
       fetchMock.mockResolvedValueOnce(
-        jsonResponse(401, { error: { code: "UNAUTHENTICATED", message: "Please sign in to continue." } }),
+        jsonResponse(401, {
+          error: { code: "UNAUTHENTICATED", message: "Please sign in to continue." },
+        }),
       );
 
       const error = await captureError(listMyToolSuggestions());
@@ -422,7 +432,9 @@ describe("real adapter", () => {
 
     it("maps a 403 response to a forbidden error", async () => {
       fetchMock.mockResolvedValueOnce(
-        jsonResponse(403, { error: { code: "FORBIDDEN", message: "You do not have access to this." } }),
+        jsonResponse(403, {
+          error: { code: "FORBIDDEN", message: "You do not have access to this." },
+        }),
       );
 
       const error = await captureError(listMyToolSuggestions());

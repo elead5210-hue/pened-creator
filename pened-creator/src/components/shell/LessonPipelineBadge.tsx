@@ -1,4 +1,3 @@
-
 import { BookCheck, FileText, Images, Sparkles, Wand2 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -54,7 +53,11 @@ interface LessonPipelineBadgeProps {
  * toolbar, and Lesson Detail's header - so the phase/pipeline framing is
  * visually identical everywhere the user navigates.
  */
-export function LessonPipelineBadge({ stage, iconOnly = false, className }: LessonPipelineBadgeProps) {
+export function LessonPipelineBadge({
+  stage,
+  iconOnly = false,
+  className,
+}: LessonPipelineBadgeProps) {
   const visuals = STAGE_VISUALS[stage];
   const label = formatPipelineStageLabel(stage);
 

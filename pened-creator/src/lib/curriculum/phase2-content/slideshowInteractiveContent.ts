@@ -1,4 +1,3 @@
-
 /**
  * Pure helpers for reading and writing a lesson's slideshow deck as an
  * `interactiveContent` entry.

@@ -1,4 +1,3 @@
-
 /**
  * Parses and structurally validates a pasted AI response for the
  * "Generate Slideshow Data" step against the Deck schema described in
@@ -103,7 +102,9 @@ function validateOptionalStringFields(
  * @throws Error if no object is found or the extracted text isn't valid JSON.
  */
 export function parseDeckJson(raw: string): unknown {
-  const stripped = String(raw ?? "").trim().replace(/```(?:json)?/gi, "");
+  const stripped = String(raw ?? "")
+    .trim()
+    .replace(/```(?:json)?/gi, "");
   const start = stripped.indexOf("{");
   const end = stripped.lastIndexOf("}");
 
@@ -131,7 +132,10 @@ function validatePoint(
   allowAutoSize: boolean,
 ): void {
   if (!isPlainObject(value)) {
-    errors.push({ path, message: `"${path}" is required and must be an object with ${fieldNames[0]}/${fieldNames[1]}.` });
+    errors.push({
+      path,
+      message: `"${path}" is required and must be an object with ${fieldNames[0]}/${fieldNames[1]}.`,
+    });
     return;
   }
 
@@ -165,7 +169,10 @@ function validateElement(value: unknown, path: string, errors: DeckError[]): voi
   }
 
   if (typeof value.id !== "string" || !value.id) {
-    errors.push({ path: `${path}.id`, message: `"${path}.id" is required and must be a non-empty string.` });
+    errors.push({
+      path: `${path}.id`,
+      message: `"${path}.id" is required and must be a non-empty string.`,
+    });
   }
 
   validateOptionalStringFields(value, path, errors, ["title", "background"]);
@@ -182,10 +189,16 @@ function validateElement(value: unknown, path: string, errors: DeckError[]): voi
   validatePoint(value.size, `${path}.size`, errors, ["width", "height"], true);
 
   if (elementType === "text" && typeof value.content !== "string") {
-    errors.push({ path: `${path}.content`, message: `"${path}.content" is required for a text element.` });
+    errors.push({
+      path: `${path}.content`,
+      message: `"${path}.content" is required for a text element.`,
+    });
   }
 
-  if ((elementType === "image" || elementType === "video") && (typeof value.src !== "string" || !value.src)) {
+  if (
+    (elementType === "image" || elementType === "video") &&
+    (typeof value.src !== "string" || !value.src)
+  ) {
     errors.push({
       path: `${path}.src`,
       message: `"${path}.src" is required for a ${elementType} element and must be a real URL/path — omit the element instead of fabricating one.`,
@@ -206,7 +219,10 @@ function validateSlide(value: unknown, path: string, errors: DeckError[]): void 
   }
 
   if (typeof value.id !== "string" || !value.id) {
-    errors.push({ path: `${path}.id`, message: `"${path}.id" is required and must be a non-empty string.` });
+    errors.push({
+      path: `${path}.id`,
+      message: `"${path}.id" is required and must be a non-empty string.`,
+    });
   }
 
   validateOptionalStringFields(value, path, errors, ["title", "background"]);
@@ -242,7 +258,9 @@ export function validateDeck(parsedResponse: unknown): { valid: boolean; errors:
   if (!isPlainObject(parsedResponse)) {
     return {
       valid: false,
-      errors: [{ path: "$", message: "The AI response must be a single JSON object representing a Deck." }],
+      errors: [
+        { path: "$", message: "The AI response must be a single JSON object representing a Deck." },
+      ],
     };
   }
 
@@ -263,13 +281,19 @@ export function validateDeck(parsedResponse: unknown): { valid: boolean; errors:
     errors.push({ path: "metadata", message: '"metadata" is required and must be an object.' });
   } else {
     if (typeof parsedResponse.metadata.title !== "string" || !parsedResponse.metadata.title) {
-      errors.push({ path: "metadata.title", message: '"metadata.title" is required and must be a non-empty string.' });
+      errors.push({
+        path: "metadata.title",
+        message: '"metadata.title" is required and must be a non-empty string.',
+      });
     }
     validateOptionalStringFields(parsedResponse.metadata, "metadata", errors, ["id"]);
   }
 
   if (!Array.isArray(parsedResponse.slides)) {
-    errors.push({ path: "slides", message: `"slides" must be an array, got ${typeOf(parsedResponse.slides)}.` });
+    errors.push({
+      path: "slides",
+      message: `"slides" must be an array, got ${typeOf(parsedResponse.slides)}.`,
+    });
   } else if (parsedResponse.slides.length === 0) {
     errors.push({ path: "slides", message: '"slides" must contain at least one slide.' });
   } else {
@@ -289,5 +313,7 @@ export function validateDeck(parsedResponse: unknown): { valid: boolean; errors:
  * mirroring formatContentErrors.
  */
 export function formatDeckErrors(errors: DeckError[]): string {
-  return errors.map((error) => (error.path !== "$" ? `${error.path}: ${error.message}` : error.message)).join("\n");
+  return errors
+    .map((error) => (error.path !== "$" ? `${error.path}: ${error.message}` : error.message))
+    .join("\n");
 }

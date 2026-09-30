@@ -1,4 +1,3 @@
-
 /**
  * Hardcoded placeholder for the slideshow app's slide-rendering JSON
  * schema. Unlike the tool registry (fetched live from /api/tools via
