@@ -2,7 +2,7 @@
 
 **Audience:** API Agent (backend implementation)
 **Consumer:** `pened-creator` frontend
-**Status:** Proposed contract. None of these endpoints exist yet.
+**Status:** Built contract. The endpoints below are implemented on the API server, and the frontend client (`src/lib/tools/toolSuggestionsClient.ts`) is aligned with them.
 **Related frontend work:** Context Menu in the Global Nav, Tool Suggestion modal, Admin suggestions view.
 
 ---
@@ -53,7 +53,7 @@ These follow the patterns already used by the existing API clients in `src/lib/c
 | --- | --- | --- | --- |
 | `id` | string (UUID) | no | User id |
 | `displayName` | string | yes | Falls back to email local part if the user has no display name |
-| `email` | string | yes | Only returned to admin endpoints. Never returned from the submit response |
+| `email` | string | yes | Only returned to admin endpoints. Never returned from the submit response or from `GET /api/tool-suggestions/mine` |
 
 ### 3.3 Suggested table (reference only, implement as fits your stack)
 
@@ -84,6 +84,7 @@ CREATE INDEX tool_suggestions_submitted_by_idx
 | Endpoint | Requires |
 | --- | --- |
 | `POST /api/tool-suggestions` | Any authenticated user |
+| `GET /api/tool-suggestions/mine` | Any authenticated user (returns only their own suggestions) |
 | `GET /api/tool-suggestions` | Authenticated user with the **admin** role |
 | `GET /api/tool-suggestions/:id` | Authenticated user with the **admin** role |
 | `PATCH /api/tool-suggestions/:id` | Authenticated user with the **admin** role |
@@ -93,9 +94,10 @@ Rules:
 - Unauthenticated requests return `401`.
 - Authenticated non-admin requests to admin endpoints return `403`. The API must not leak whether a suggestion id exists to non-admins (always `403` before any lookup).
 - The submitter is always taken from the authenticated session. The client never sends a user id.
-- The frontend hides admin UI for non-admins, but this is a convenience only. The API is the source of truth for authorization.
+- The frontend hides admin UI for non-admins and never calls the admin-only list, get or PATCH endpoints unless `useAuth().isAdmin` is true. This is a convenience only. The API is the source of truth for authorization.
+- Signed-in non-admins who want to see their own suggestions use `GET /api/tool-suggestions/mine` (section 5.5).
 
-**Open question for the API Agent:** the frontend needs a way to know whether the current user is an admin so it can show or hide the admin entry. Please confirm whether the existing session/user payload already exposes a role. If it does not, add `role` (or `isAdmin`) to the current-user response and report the exact field name back so `AuthContext` can consume it.
+**Resolved: how the frontend knows the user is an admin.** The user payload returned by `POST /api/auth/register`, `POST /api/auth/login` and `GET /api/auth/me` includes a boolean `isAdmin`. `authClient.ts` treats a missing or non-boolean value as `false`, and `AuthContext` exposes the derived `isAdmin` (`user?.isAdmin === true`) through `useAuth()`.
 
 ---
 
@@ -267,6 +269,41 @@ Behavior:
 
 ---
 
+### 5.5 List my suggestions (any signed-in user)
+
+`GET /api/tool-suggestions/mine`
+
+Returns the suggestions submitted by the authenticated user, so a submitter can see the status of their own ideas. The submitter is taken from the session, so there is no user id parameter, and one user can never see another user's suggestions.
+
+This route is registered before `/:id`, so `mine` is never treated as a suggestion id.
+
+**Success: `200 OK`**
+
+```json
+{
+  "items": [
+    {
+      "id": "6f1c1f0e-2f3e-4a52-9d55-6b1a2f7d8c11",
+      "description": "A tool that turns a lesson into a printable worksheet with answer key.",
+      "status": "reviewed",
+      "submittedBy": {
+        "id": "b7a0f1d2-3c44-4e6b-8f21-0d9e5c7a1234",
+        "displayName": "Sam Teacher"
+      },
+      "createdAt": "2026-09-29T08:15:30.000Z",
+      "updatedAt": "2026-09-30T09:00:00.000Z",
+      "reviewedAt": "2026-09-30T09:00:00.000Z"
+    }
+  ]
+}
+```
+
+The internal review fields `adminNote` and `reviewedBy` are left out, and no email is returned in `submittedBy`. The submitter only sees the status and when it was reviewed. A user with no suggestions gets `"items": []`.
+
+**Errors:** `401`, `500`. Other HTTP methods on this path return `405 METHOD_NOT_ALLOWED`. See section 6.
+
+---
+
 ## 6. Error Format
 
 All non-2xx responses use this body:
@@ -294,7 +331,8 @@ All non-2xx responses use this body:
 | 400 | `VALIDATION_ERROR` | Missing, too short, too long or wrongly typed fields; invalid query params; empty PATCH body; malformed id |
 | 401 | `UNAUTHENTICATED` | No valid session |
 | 403 | `FORBIDDEN` | Authenticated but not an admin |
-| 404 | `NOT_FOUND` | Suggestion id does not exist (admin endpoints only) |
+| 404 | `NOT_FOUND` | Suggestion id does not exist (admin endpoints only), or the route does not exist. Returned as this structured body, not a bare or HTML 404 |
+| 405 | `METHOD_NOT_ALLOWED` | The route exists but does not support the HTTP method used (for example `DELETE /api/tool-suggestions`). Returned as this structured body |
 | 429 | `RATE_LIMITED` | Too many submissions |
 | 500 | `INTERNAL_ERROR` | Unexpected failure. Do not leak internals in `message` |
 
@@ -326,11 +364,10 @@ The frontend applies the same limits client-side, but the API must always enforc
 
 - Deleting suggestions
 - Editing a suggestion after submission
-- Submitter-facing "my suggestions" list
 - Email or in-app notifications on submit or status change
 - Voting, comments, duplicate detection, attachments
 
-The design leaves room for these. For example, a future `GET /api/tool-suggestions/mine` route would not conflict with the routes above as long as it is registered before `/:id`.
+The design leaves room for these. The submitter-facing list (`GET /api/tool-suggestions/mine`, section 5.5) is now built and does not conflict with `/:id` because it is registered before it.
 
 ---
 
@@ -385,6 +422,39 @@ The frontend will build against a mock adapter that returns exactly the shapes b
     "status": 500,
     "body": { "error": { "code": "INTERNAL_ERROR", "message": "Something went wrong. Please try again." } }
   },
+  "methodNotAllowed": {
+    "status": 405,
+    "body": { "error": { "code": "METHOD_NOT_ALLOWED", "message": "That method is not allowed on this route." } }
+  },
+  "notFound": {
+    "status": 404,
+    "body": { "error": { "code": "NOT_FOUND", "message": "That could not be found." } }
+  },
+  "listMySuccess": {
+    "status": 200,
+    "body": {
+      "items": [
+        {
+          "id": "6f1c1f0e-2f3e-4a52-9d55-6b1a2f7d8c11",
+          "description": "A tool that turns a lesson into a printable worksheet with answer key.",
+          "status": "reviewed",
+          "submittedBy": { "id": "b7a0f1d2-3c44-4e6b-8f21-0d9e5c7a1234", "displayName": "Sam Teacher" },
+          "createdAt": "2026-09-29T08:15:30.000Z",
+          "updatedAt": "2026-09-30T09:00:00.000Z",
+          "reviewedAt": "2026-09-30T09:00:00.000Z"
+        },
+        {
+          "id": "0b9d3a5e-7c1f-4d2a-8e6b-3f4a5c6d7e8f",
+          "description": "A tool that quizzes students on vocabulary from their lessons.",
+          "status": "new",
+          "submittedBy": { "id": "b7a0f1d2-3c44-4e6b-8f21-0d9e5c7a1234", "displayName": "Sam Teacher" },
+          "createdAt": "2026-09-28T14:02:10.000Z",
+          "updatedAt": "2026-09-28T14:02:10.000Z",
+          "reviewedAt": null
+        }
+      ]
+    }
+  },
   "listEmpty": {
     "status": 200,
     "body": {
@@ -405,6 +475,7 @@ The frontend will build against a mock adapter that returns exactly the shapes b
 - Submit with the exact text `simulate-error` returns `serverError`.
 - Submit with the exact text `simulate-rate-limit` returns `rateLimited`.
 - All other valid submissions return `submitSuccess` with the description echoed back and a fresh id.
+- `listMy()` returns the `listMySuccess` items (a `reviewed` and a `new` suggestion, without `adminNote` or `reviewedBy`).
 - Mock latency is around 400 ms so loading states are visible.
 
 ---
@@ -421,7 +492,9 @@ The frontend will build against a mock adapter that returns exactly the shapes b
 - [ ] `PATCH /api/tool-suggestions/:id` updates status and note, maintains `reviewedBy`, `reviewedAt` and `updatedAt`
 - [ ] Non-admins get `403` on all admin endpoints, unauthenticated users get `401`
 - [ ] Error body matches section 6 for every non-2xx response
-- [ ] Current-user payload exposes the admin role, and the field name has been reported back to the frontend team
+- [x] Current-user payload (register, login and `/api/auth/me`) exposes the boolean `isAdmin`, and the field name has been reported back to the frontend team
+- [x] `GET /api/tool-suggestions/mine` works for any signed-in user, returns only their own suggestions and leaves out `adminNote`, `reviewedBy` and emails
+- [x] Unsupported methods return a structured `405 METHOD_NOT_ALLOWED` and unknown routes or ids return a structured `404 NOT_FOUND`
 - [ ] Automated tests cover validation, auth and role checks, pagination, filtering and status transitions
 - [ ] This document updated if any behavior differs from what is described here
 
@@ -432,3 +505,4 @@ The frontend will build against a mock adapter that returns exactly the shapes b
 | Date | Change |
 | --- | --- |
 | 2026-09-29 | Initial contract drafted by the frontend team |
+| 2026-09-30 | Updated to the built contract: added `GET /api/tool-suggestions/mine`, `isAdmin` on the current-user payload (resolving the open question), and the structured `405 METHOD_NOT_ALLOWED` and `404 NOT_FOUND` errors |

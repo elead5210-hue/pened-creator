@@ -27,8 +27,8 @@ output, and it should only ever change by re-running `npm run dev` or
 order and stopping at the first failure:
 
 1. `npm run typecheck` (`tsc --noEmit`)
-2. `npm run lint` (ESLint, plus the route-tree, folder-boundary and
-   client-secret checks)
+2. `npm run lint` (ESLint, plus the route-tree, folder-boundary,
+   client-secret and API-call checks)
 3. `npm run test` (Vitest)
 4. `npm run build` (`vite build`)
 
@@ -42,6 +42,24 @@ no longer exists after a move, a typo in an `@/` alias, a missing named
 export) are caught by the typecheck and build steps, but only if you
 actually run them. Do not report a change as done, and do not open a pull
 request, until `npm run verify` passes.
+
+## Calling the API
+
+All requests to penedv1-server go through the shared client in
+`src/lib/curriculum/shared/apiClient.ts`: `apiGet`, `apiPost`, `apiPut` and
+`apiDelete`. If a request truly needs `fetch` itself (for example to read a
+response header), build the URL with `apiUrl(path)` from the same module and
+keep `credentials: "include"`.
+
+**Never call `fetch("/api/...")` with a relative path.** In production this app
+and the API are on different hosts, so a relative URL resolves against this
+app's own origin and answers `404` without ever reaching the API. Mock
+adapters and tests that assert a relative URL will not catch it.
+
+Run `npm run apicalls:check` (also part of `npm run lint`, `prebuild` and
+therefore CI) to find any `fetch(` call in `src/` that bypasses the shared
+client. It prints the file and line of each violation. See
+`src/lib/tools/README.md` for the full explanation.
 
 ## Route tree (`src/routeTree.gen.ts`)
 

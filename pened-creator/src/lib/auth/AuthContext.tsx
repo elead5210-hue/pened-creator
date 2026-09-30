@@ -17,6 +17,11 @@ type AuthContextValue = {
   /** The current session's user, or null if not logged in. Stays null
    * (rather than stale data) whenever loading is true. */
   user: RegisteredUser | null;
+  /** Derived from `user?.isAdmin === true`: false when logged out, while
+   * loading, or for any non-admin account. Gate admin-only API calls (such as
+   * the tool suggestion review list) on this so they are never sent for
+   * users the server would reject with 403. */
+  isAdmin: boolean;
   /** True only for the initial session check on mount. Login/register/
    * logout/refresh don't toggle this back on — callers that need a
    * separate "this specific action is in flight" state should track
@@ -124,7 +129,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo<AuthContextValue>(
-    () => ({ user, loading, isInitialized: !loading, logout, refresh }),
+    () => ({
+      user,
+      loading,
+      isInitialized: !loading,
+      isAdmin: user?.isAdmin === true,
+      logout,
+      refresh,
+    }),
     [user, loading, logout, refresh],
   );
 

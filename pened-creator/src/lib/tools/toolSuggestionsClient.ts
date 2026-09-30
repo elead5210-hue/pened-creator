@@ -4,13 +4,17 @@
  * Implements the contract documented in docs/api-handoff/tool-suggestions.md.
  *
  * Two adapters are provided behind one interface:
- * - a real adapter that calls `/api/tool-suggestions` with fetch
+ * - a real adapter that calls `<VITE_API_URL>/api/tool-suggestions` with fetch
+ *   (never a relative path: in production the frontend and the API are on
+ *   different hosts, so a relative URL would hit the frontend and get a 404)
  * - a mock adapter that returns the documented stub shapes, so the UI can be
  *   built and tested before the backend endpoints exist
  *
  * The mock is enabled with `VITE_USE_MOCK_TOOL_SUGGESTIONS=true`, or by calling
  * `setToolSuggestionsAdapter()` (useful in tests).
  */
+
+import { apiUrl } from "../curriculum/shared/apiClient";
 
 // ---------------------------------------------------------------------------
 // Types (mirror section 3 of the hand-off doc)
@@ -52,11 +56,23 @@ export interface SubmitToolSuggestionResult {
   suggestion: ToolSuggestion;
 }
 
+/**
+ * A suggestion as returned by `GET /api/tool-suggestions/mine`. The server
+ * leaves out the internal review fields (`adminNote`, `reviewedBy`) and every
+ * email, so a submitter only sees the status and when it was reviewed.
+ */
+export type MyToolSuggestion = Omit<ToolSuggestion, "adminNote" | "reviewedBy">;
+
+export interface ListMyToolSuggestionsResult {
+  items: MyToolSuggestion[];
+}
+
 export type ToolSuggestionErrorCode =
   | "VALIDATION_ERROR"
   | "UNAUTHENTICATED"
   | "FORBIDDEN"
   | "NOT_FOUND"
+  | "METHOD_NOT_ALLOWED"
   | "RATE_LIMITED"
   | "INTERNAL_ERROR"
   | "NETWORK_ERROR"
@@ -119,6 +135,8 @@ export function validateToolSuggestionDescription(description: string): string |
 
 export interface ToolSuggestionsAdapter {
   submit(input: SubmitToolSuggestionInput): Promise<SubmitToolSuggestionResult>;
+  /** The signed-in user's own suggestions, newest first. Open to every role. */
+  listMy(): Promise<ListMyToolSuggestionsResult>;
 }
 
 // ---------------------------------------------------------------------------
@@ -141,6 +159,8 @@ function codeFromStatus(status: number): ToolSuggestionErrorCode {
       return "FORBIDDEN";
     case 404:
       return "NOT_FOUND";
+    case 405:
+      return "METHOD_NOT_ALLOWED";
     case 429:
       return "RATE_LIMITED";
     case 500:
@@ -171,6 +191,7 @@ async function toApiError(response: Response): Promise<ToolSuggestionsApiError> 
     "UNAUTHENTICATED",
     "FORBIDDEN",
     "NOT_FOUND",
+    "METHOD_NOT_ALLOWED",
     "RATE_LIMITED",
     "INTERNAL_ERROR",
   ];
@@ -203,9 +224,22 @@ async function toApiError(response: Response): Promise<ToolSuggestionsApiError> 
 
 export const realToolSuggestionsAdapter: ToolSuggestionsAdapter = {
   async submit(input) {
+    // Resolve the absolute API URL first. apiUrl() throws a descriptive error
+    // when VITE_API_URL is missing or invalid; surface that message instead of
+    // reporting it as a generic connection problem.
+    try {
+      apiUrl(TOOL_SUGGESTIONS_PATH);
+    } catch (err) {
+      throw new ToolSuggestionsApiError({
+        status: 0,
+        code: "NETWORK_ERROR",
+        message: err instanceof Error ? err.message : "The API URL is not configured correctly.",
+      });
+    }
+
     let response: Response;
     try {
-      response = await fetch(TOOL_SUGGESTIONS_PATH, {
+      response = await fetch(apiUrl(TOOL_SUGGESTIONS_PATH), {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -243,6 +277,61 @@ export const realToolSuggestionsAdapter: ToolSuggestionsAdapter = {
     }
 
     return { suggestion: body.suggestion as unknown as ToolSuggestion };
+  },
+
+  async listMy() {
+    const path = `${TOOL_SUGGESTIONS_PATH}/mine`;
+
+    // Surface a missing or invalid VITE_API_URL with its descriptive message
+    // rather than as a generic connection problem.
+    try {
+      apiUrl(path);
+    } catch (err) {
+      throw new ToolSuggestionsApiError({
+        status: 0,
+        code: "NETWORK_ERROR",
+        message: err instanceof Error ? err.message : "The API URL is not configured correctly.",
+      });
+    }
+
+    let response: Response;
+    try {
+      response = await fetch(apiUrl(path), {
+        method: "GET",
+        credentials: "include",
+      });
+    } catch {
+      throw new ToolSuggestionsApiError({
+        status: 0,
+        code: "NETWORK_ERROR",
+        message: "Couldn't reach the server. Check your connection and try again.",
+      });
+    }
+
+    if (!response.ok) {
+      throw await toApiError(response);
+    }
+
+    let body: unknown;
+    try {
+      body = await response.json();
+    } catch {
+      throw new ToolSuggestionsApiError({
+        status: response.status,
+        code: "UNKNOWN_ERROR",
+        message: "The server returned an unexpected response.",
+      });
+    }
+
+    if (!isRecord(body) || !Array.isArray(body.items)) {
+      throw new ToolSuggestionsApiError({
+        status: response.status,
+        code: "UNKNOWN_ERROR",
+        message: "The server returned an unexpected response.",
+      });
+    }
+
+    return { items: body.items as MyToolSuggestion[] };
   },
 };
 
@@ -311,6 +400,33 @@ export const mockToolSuggestionsAdapter: ToolSuggestionsAdapter = {
       },
     };
   },
+
+  async listMy() {
+    await delay(MOCK_LATENCY_MS);
+
+    return {
+      items: [
+        {
+          id: "6f1c1f0e-2f3e-4a52-9d55-6b1a2f7d8c11",
+          description: "A tool that turns a lesson into a printable worksheet with answer key.",
+          status: "reviewed",
+          submittedBy: { id: "b7a0f1d2-3c44-4e6b-8f21-0d9e5c7a1234", displayName: "Sam Teacher" },
+          createdAt: "2026-09-29T08:15:30.000Z",
+          updatedAt: "2026-09-30T09:00:00.000Z",
+          reviewedAt: "2026-09-30T09:00:00.000Z",
+        },
+        {
+          id: "0b9d3a5e-7c1f-4d2a-8e6b-3f4a5c6d7e8f",
+          description: "A tool that quizzes students on vocabulary from their lessons.",
+          status: "new",
+          submittedBy: { id: "b7a0f1d2-3c44-4e6b-8f21-0d9e5c7a1234", displayName: "Sam Teacher" },
+          createdAt: "2026-09-28T14:02:10.000Z",
+          updatedAt: "2026-09-28T14:02:10.000Z",
+          reviewedAt: null,
+        },
+      ],
+    };
+  },
 };
 
 // ---------------------------------------------------------------------------
@@ -347,4 +463,16 @@ export function submitToolSuggestion(
   input: SubmitToolSuggestionInput,
 ): Promise<SubmitToolSuggestionResult> {
   return activeAdapter.submit(input);
+}
+
+/**
+ * List the signed-in user's own suggestions, newest first
+ * (`GET /api/tool-suggestions/mine`). Open to every role, so this is the call
+ * a non-admin UI should use. The admin-only review list
+ * (`GET /api/tool-suggestions`) returns 403 for everyone else and must only be
+ * called when `useAuth().isAdmin` is true.
+ * Throws `ToolSuggestionsApiError` on any failure.
+ */
+export function listMyToolSuggestions(): Promise<ListMyToolSuggestionsResult> {
+  return activeAdapter.listMy();
 }

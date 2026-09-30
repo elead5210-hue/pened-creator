@@ -38,25 +38,74 @@ There is no `createTool`, `updateTool`, or `deleteTool` here — this app
 can only read the registry, never write to it.
 
 ### `toolSuggestionsClient.ts`
-- `ToolSuggestion` — a suggested tool match returned for a given piece
-  of curriculum content: at minimum a `toolId`, the matching `Tool`'s
-  `name`, and a `confidence`/`reason` describing why it was suggested.
-- `getToolSuggestions(input)` — given the content to be matched (e.g. a
-  learning objective or generated content payload), returns a list of
-  `ToolSuggestion`s ranked by relevance.
+- `ToolSuggestion` — a tool idea submitted by a signed-in user, as
+  returned by penedv1-server: `id`, `description`, `status`
+  (`new | reviewed | accepted | rejected`), `submittedBy`, timestamps,
+  and the review fields `reviewedBy`, `reviewedAt` and `adminNote`.
+- `submitToolSuggestion({ description })` — `POST`s a suggestion to
+  `/api/tool-suggestions` and resolves to `{ suggestion }`. Throws
+  `ToolSuggestionsApiError`, which carries `status`, a stable `code`,
+  optional per-field `fields`, and `retryAfterSeconds` for rate limiting.
+- `listMyToolSuggestions()` — `GET`s `/api/tool-suggestions/mine` and
+  resolves to `{ items }`, the caller's own suggestions as
+  `MyToolSuggestion[]`. Any signed-in user may call it. The server leaves
+  out the internal review fields (`adminNote`, `reviewedBy`) and every
+  email, so a submitter only sees the `status` and `reviewedAt`. Throws
+  `ToolSuggestionsApiError` (`401` when signed out; a `2xx` response
+  without an `items` array is an `UNKNOWN_ERROR`).
+- `ToolSuggestionErrorCode` — the stable `code` values on
+  `ToolSuggestionsApiError`: `VALIDATION_ERROR`, `UNAUTHENTICATED`,
+  `FORBIDDEN`, `NOT_FOUND`, `METHOD_NOT_ALLOWED`, `RATE_LIMITED`,
+  `INTERNAL_ERROR`, plus the client-side `NETWORK_ERROR` and
+  `UNKNOWN_ERROR`. `METHOD_NOT_ALLOWED` is the structured `405` the server
+  returns when a route exists but not for the HTTP method used; if the body
+  is not JSON the code is derived from the status instead.
+- `validateToolSuggestionDescription(description)` — client-side length
+  check (10 to 2000 characters after trimming) for fast feedback; the API
+  always re-validates.
+- `setToolSuggestionsAdapter(adapter)` / `isUsingMockToolSuggestions()` —
+  swap or inspect the active adapter (used by tests and local development).
 
-This client is currently backed by a **mock adapter**: the real
-suggestion endpoint does not exist on penedv1-server yet, so
-`getToolSuggestions` resolves its result locally (deterministically,
-from the already-fetched `Tool` list) instead of calling `apiGet`. The
-function signature and return shape are written to match what the real
-endpoint is expected to return, so that swapping the mock body for a
-real `apiGet("/api/tools/suggestions", ...)` call later should not
-require any caller-facing changes. Callers should treat it exactly
-like any other async data-fetching function (e.g. wrap it in a React
-Query `useQuery`) rather than special-casing it as synchronous or mock
-only, so that the eventual swap to a live endpoint is invisible to
-them.
+The client has two adapters behind one interface: a **real adapter** that
+calls the live endpoint, and a **mock adapter** that returns the stub
+responses from `docs/api-handoff/tool-suggestions.md`. The mock is only
+used when `VITE_USE_MOCK_TOOL_SUGGESTIONS=true` or when a test swaps it in,
+and must never be enabled in a production build. The contract is in
+`docs/api-handoff/tool-suggestions.md`.
+
+### Admin-only endpoints
+
+The server's list (`GET /api/tool-suggestions`), get
+(`GET /api/tool-suggestions/:id`) and update (`PATCH`) endpoints are
+admin-only and answer `403 FORBIDDEN` to everyone else. **Only call them
+when `useAuth().isAdmin` is `true`** (from `@/lib/auth/AuthContext`, derived
+from the `isAdmin` flag on the current-user payload). Never call them for
+non-admins or while `isAdmin` is `false` because the session is still
+loading or logged out. Non-admin users who want to see their own
+suggestions use `listMyToolSuggestions()`, which is open to any signed-in
+user. The client currently has no admin list/get/PATCH functions, so add
+them here, gated this way at the call site, if the admin view is built.
+
+## All API calls go through the shared client
+
+Every request to penedv1-server must go through
+`@/lib/curriculum/shared/apiClient`: `apiGet`, `apiPost`, `apiPut` and
+`apiDelete`. If a call genuinely needs `fetch` itself (for example to read
+response headers such as `Retry-After`), build its URL with `apiUrl(path)`
+from the same module and keep `credentials: "include"`. That keeps the
+base URL, session cookie handling and error handling in one place.
+
+**Never call `fetch("/api/...")` with a relative path.** In production this
+app (`pened-creator.fly.dev`) and the API (`pened-server.fly.dev`) are on
+different hosts, and a relative URL resolves against this app's own origin,
+which has no such route. The request answers `404` and never reaches the API.
+The mock adapter and a test that asserts the relative URL both hide this,
+which is how the tool suggestions client shipped with exactly that bug.
+
+`npm run apicalls:check` (`scripts/check-api-calls.js`, also run by `lint`,
+`prebuild` and therefore CI) fails the build on any `fetch(` call in `src/`
+that is not built with `apiUrl(...)`, outside `apiClient.ts`, `authClient.ts`
+and test files. It prints only the file and line of each violation.
 
 ### `slideshowSchemaPlaceholder.ts`
 - `SLIDESHOW_SCHEMA_PLACEHOLDER` — a hardcoded placeholder JSON Schema
@@ -72,10 +121,13 @@ finalized; no other file should need to change as a result.
 
 - `@/lib/curriculum/shared/apiClient` — `toolsClient.ts` imports
   `apiGet` and the `ApiError` class to call the `/api/tools` endpoints
-  and translate a 404 into "not found" for `getTool`. `toolSuggestionsClient.ts`
-  does not currently import from here, since it is mock-backed; this
-  will become a real dependency once it switches to a live `apiGet`
-  call.
+  and translate a 404 into "not found" for `getTool`.
+  `toolSuggestionsClient.ts` imports `apiUrl` to build the absolute URL for
+  its `POST /api/tool-suggestions` and `GET /api/tool-suggestions/mine`
+  requests. It uses `fetch` directly, rather than `apiPost`/`apiGet`, so it
+  can read the `Retry-After` header and the structured
+  `{ error: { code, message, fields } }` body.
+
 
 ## Imported by (outside this folder)
 
@@ -113,8 +165,10 @@ finalized; no other file should need to change as a result.
 - `toolSuggestionsClient.ts`'s mock adapter is an implementation
   detail, not a feature to design around — don't add mock-only params
   or shortcuts to its exported functions that wouldn't also make sense
-  against a real HTTP endpoint. When the real endpoint ships, update
-  the function body in place rather than adding a parallel real client.
+  against the real HTTP endpoint. Keep both adapters behind the one
+  `ToolSuggestionsAdapter` interface, and keep the real adapter's URL
+  built with `apiUrl()` (see "All API calls go through the shared client"
+  above).
 - `slideshowSchemaPlaceholder.ts` is deliberately hardcoded and has no
   parent dependencies of its own — don't wire it up to a live fetch
   speculatively; when the real schema is ready, update its constants

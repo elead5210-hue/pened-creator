@@ -145,6 +145,21 @@ function buildUrl(path: string, query?: QueryParams): string {
 }
 
 /**
+ * Returns the absolute URL for an API path, built from the validated
+ * VITE_API_URL base (e.g. "/api/tool-suggestions" becomes
+ * "https://pened-server.fly.dev/api/tool-suggestions").
+ *
+ * Use this for any code that has to call `fetch` itself instead of going
+ * through apiGet/apiPost/etc. A bare relative path like "/api/..." would
+ * resolve against this app's own origin, which is a different host from the
+ * API in production and answers 404. Throws the same descriptive error as
+ * the rest of this module if VITE_API_URL is missing or invalid.
+ */
+export function apiUrl(path: string, query?: QueryParams): string {
+  return buildUrl(path, query);
+}
+
+/**
  * Attempts to parse a Response body as JSON, tolerating an empty body
  * (e.g. a 204, or a non-JSON error page from something in front of the
  * server) by returning undefined instead of throwing a SyntaxError.
@@ -216,7 +231,7 @@ async function request<T>(
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });
   } catch (err) {
-    const apiUrl = (() => {
+    const configuredBaseUrl = (() => {
       try {
         return getBaseUrl();
       } catch {
@@ -225,7 +240,7 @@ async function request<T>(
     })();
     throw new ApiError(
       0,
-      `Could not reach the API at ${apiUrl}. This usually means either the API is unreachable ` +
+      `Could not reach the API at ${configuredBaseUrl}. This usually means either the API is unreachable ` +
         `(check your network connection and that VITE_API_URL is correct), or the API's ` +
         `CORS_ORIGIN doesn't allow this app's origin. ${err instanceof Error ? err.message : String(err)}`,
     );

@@ -32,7 +32,20 @@ export type RegisteredUser = {
   email: string;
   type: string;
   createdAt: string;
+  /** Whether the account may use admin-only endpoints (e.g. the suggestion
+   * review list). Always a real boolean on the client: defaults to false when
+   * the server omits the field. */
+  isAdmin: boolean;
 };
+
+/** The user record as it arrives over the wire, where `isAdmin` may be absent. */
+type RegisteredUserResponse = Omit<RegisteredUser, "isAdmin"> & { isAdmin?: boolean };
+
+/** Normalizes a server user record so `isAdmin` is true only when the server
+ * explicitly sent `true`; a missing or non-boolean value becomes false. */
+function normalizeUser(user: RegisteredUserResponse): RegisteredUser {
+  return { ...user, isAdmin: user.isAdmin === true };
+}
 
 /**
  * Registers a new account. Always created server-side as type 'creator'
@@ -41,8 +54,8 @@ export type RegisteredUser = {
  * duplicate email, validation failure, or any other non-2xx response.
  * (see ../curriculum/shared/apiClient for ApiError.)
  */
-export function registerUser(input: RegisterInput): Promise<RegisteredUser> {
-  return apiPost<RegisteredUser>("/api/auth/register", input);
+export async function registerUser(input: RegisterInput): Promise<RegisteredUser> {
+  return normalizeUser(await apiPost<RegisteredUserResponse>("/api/auth/register", input));
 }
 
 /**
@@ -51,8 +64,8 @@ export function registerUser(input: RegisterInput): Promise<RegisteredUser> {
  * authenticated user. Rejects with an ApiError on invalid credentials or
  * any other non-2xx response.
  */
-export function loginUser(input: LoginInput): Promise<RegisteredUser> {
-  return apiPost<RegisteredUser>("/api/auth/login", input);
+export async function loginUser(input: LoginInput): Promise<RegisteredUser> {
+  return normalizeUser(await apiPost<RegisteredUserResponse>("/api/auth/login", input));
 }
 
 /**
@@ -65,7 +78,7 @@ export function loginUser(input: LoginInput): Promise<RegisteredUser> {
  */
 export async function getCurrentUser(): Promise<RegisteredUser | null> {
   try {
-    return await apiGet<RegisteredUser>("/api/auth/me");
+    return normalizeUser(await apiGet<RegisteredUserResponse>("/api/auth/me"));
   } catch (err) {
     if (err instanceof ApiError && err.status === 401) {
       return null;
