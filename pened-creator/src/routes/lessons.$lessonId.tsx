@@ -15,6 +15,7 @@ import {
   getAllNodes,
   getLessonBreakdown,
   getLesson,
+  saveSlideshowDeck,
   subscribe,
   updateLesson,
   type LessonRecord,
@@ -40,6 +41,7 @@ import { SlideshowDeckGenerator } from "@/components/curriculum/phase2-content/S
 import { SlideDataViewer } from "@/components/curriculum/phase2-content/SlideDataViewer";
 import { GamesPlaceholder } from "@/components/curriculum/phase3-games/GamesPlaceholder";
 import { LessonStatus } from "@/lib/curriculum/phase2-content/lessonRecord";
+import type { SlideshowDeck } from "@/lib/curriculum/phase2-content/slideshowDeckValidator";
 import { requireAuth } from "@/lib/auth/routeGuard";
 
 // Codegen audit note: this file exports exactly one Route via
@@ -364,6 +366,29 @@ function LessonDetail() {
     }
   }
 
+  /**
+   * Saves a deck in which one slide was updated from the Slide Data step.
+   * It goes through the same saveSlideshowDeck path as the Generate
+   * Slideshow Data step, which validates the whole deck again and stores it
+   * as the lesson's single slideshow interactiveContent entry, then updates
+   * the lesson record with what the server returned.
+   *
+   * Unlike a deck re-saved in the Generate Slideshow Data step, this does
+   * NOT bump slideDataResetKey, so the viewer stays on the slide that was
+   * edited. Failures (SlideshowSaveError: expired session, oversized deck,
+   * network error, invalid deck) are deliberately not caught here: they
+   * propagate to the caller so it can show them separately from the
+   * response's validation errors.
+   */
+  async function handleSlideUpdated(deck: SlideshowDeck): Promise<void> {
+    if (!lessonRecord) {
+      throw new Error("This lesson has no record to save the slide to.");
+    }
+
+    const saved = await saveSlideshowDeck(lessonRecord.id, deck);
+    setLessonRecord(saved);
+  }
+
   const steps: StepSidebarItem<LifecycleTab>[] = (
     Object.keys(STEP_LABELS) as LifecycleTab[]
   ).map((value) => ({
@@ -635,6 +660,7 @@ function LessonDetail() {
                       key={`${lessonId}-${slideDataResetKey}`}
                       slideshowDeck={savedSlideshowDeck}
                       lesson={lessonRecord}
+                      onSlideUpdated={handleSlideUpdated}
                     />
                   )
                 ) : null}

@@ -1,7 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { clampSlideIndex, extractSlides } from "@/lib/curriculum/phase2-content/slideshowDeckSlides";
-import { formatDeckErrors } from "@/lib/curriculum/phase2-content/slideshowDeckValidator";
+import { replaceSlideInDeck } from "@/lib/curriculum/phase2-content/slideImagesResponse";
+import {
+  formatDeckErrors,
+  parseAndValidateDeck,
+  type SlideData,
+  type SlideshowDeck,
+} from "@/lib/curriculum/phase2-content/slideshowDeckValidator";
 import { SlideDataBreadcrumbNav } from "./SlideDataBreadcrumbNav";
 import { SlideDataCard } from "./SlideDataCard";
 import { SlideImagesPromptModal, type SlideImagesPromptLesson } from "./SlideImagesPromptModal";
@@ -21,6 +27,52 @@ export interface SlideDataViewerProps {
    * the lesson's uploaded images. When omitted, the button is not shown.
    */
   lesson?: SlideImagesPromptLesson | null;
+  /**
+   * Called with the complete updated deck when the slide currently shown is
+   * replaced (for example by the "Add images" modal). The parent saves it
+   * and passes the saved deck back as `slideshowDeck`. The returned promise
+   * should reject if the save fails, so the caller of the apply handler can
+   * show the error. When the saved deck comes back, the viewer stays on the
+   * slide that was edited instead of resetting to the first slide. When
+   * omitted, the modal gets no apply handler.
+   */
+  onSlideUpdated?: (deck: SlideshowDeck) => Promise<void> | void;
+}
+
+/** Copies a JSON-like value with object keys sorted, so key order never matters. */
+function canonicalize(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(canonicalize);
+  if (value !== null && typeof value === "object") {
+    const source = value as Record<string, unknown>;
+    return Object.fromEntries(
+      Object.keys(source)
+        .sort()
+        .map((key) => [key, canonicalize(source[key])]),
+    );
+  }
+  return value;
+}
+
+/**
+ * A signature of a deck's content that ignores object key order and whether
+ * the deck is given as an object or as JSON text. The server can return a
+ * saved deck with its keys in a different order, so comparing plain
+ * JSON.stringify output would wrongly treat our own save as a new deck.
+ */
+function canonicalSignature(value: unknown): string {
+  let parsed = value;
+  if (typeof parsed === "string") {
+    try {
+      parsed = JSON.parse(parsed);
+    } catch {
+      return parsed as string;
+    }
+  }
+  try {
+    return JSON.stringify(canonicalize(parsed)) ?? "";
+  } catch {
+    return "";
+  }
 }
 
 /**
@@ -30,13 +82,19 @@ export interface SlideDataViewerProps {
  * the empty (nothing saved) and invalid (unparseable or failing validation)
  * states. When the deck's content changes, the view resets to the first
  * slide; clamping only guards against an out-of-range index (for example a
- * too-large or negative `initialIndex`).
+ * too-large or negative `initialIndex`). The one exception is a deck this
+ * viewer itself handed to `onSlideUpdated`: when that saved deck comes back
+ * as the new `slideshowDeck`, the view stays on the slide that was edited.
  */
-export function SlideDataViewer({ slideshowDeck, initialIndex = 0, lesson }: SlideDataViewerProps) {
+export function SlideDataViewer({ slideshowDeck, initialIndex = 0, lesson, onSlideUpdated }: SlideDataViewerProps) {
   const extracted = useMemo(() => extractSlides(slideshowDeck), [slideshowDeck]);
   const [requestedIndex, setRequestedIndex] = useState(initialIndex);
   const headingRef = useRef<HTMLDivElement>(null);
   const hasNavigatedRef = useRef(false);
+  // The canonical signature of the deck most recently handed to
+  // onSlideUpdated, so that deck coming back as the prop isn't mistaken for
+  // a deck replaced elsewhere. Null when no update is waiting to come back.
+  const pendingSavedSignatureRef = useRef<string | null>(null);
   const addImagesButtonRef = useRef<HTMLButtonElement>(null);
   const wasModalOpenRef = useRef(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -75,12 +133,22 @@ export function SlideDataViewer({ slideshowDeck, initialIndex = 0, lesson }: Sli
   useEffect(() => {
     if (previousSignatureRef.current === deckSignature) return;
     previousSignatureRef.current = deckSignature;
+
+    // If this is the deck this viewer just saved, keep the user where they
+    // are. Any other change (for example a deck re-saved in the Generate
+    // Slideshow Data step) falls through and resets as before.
+    const pendingSignature = pendingSavedSignatureRef.current;
+    pendingSavedSignatureRef.current = null;
+    if (pendingSignature !== null && pendingSignature === canonicalSignature(slideshowDeck)) {
+      return;
+    }
+
     hasNavigatedRef.current = false;
     // Close the modal without pulling focus back: the user didn't close it.
     wasModalOpenRef.current = false;
     setIsModalOpen(false);
     setRequestedIndex(0);
-  }, [deckSignature]);
+  }, [deckSignature, slideshowDeck]);
 
   // After the user navigates, move focus to the card region so keyboard and
   // screen-reader users land on the new slide's content. This never runs on
@@ -109,6 +177,35 @@ export function SlideDataViewer({ slideshowDeck, initialIndex = 0, lesson }: Sli
   function handleNavigate(index: number) {
     hasNavigatedRef.current = true;
     setRequestedIndex(clampSlideIndex(index, totalSlides));
+  }
+
+  /**
+   * Replaces the slide currently shown with `updatedSlide` in the saved deck
+   * and hands the whole deck to `onSlideUpdated`. Rejects (with the parent's
+   * error) if the save fails, leaving the view as it was.
+   */
+  async function handleApplySlide(updatedSlide: SlideData): Promise<void> {
+    if (!onSlideUpdated) return;
+
+    const parsed = parseAndValidateDeck(slideshowDeck);
+    if (!parsed.ok) {
+      throw new Error("The saved slideshow data couldn't be read, so the slide can't be updated.");
+    }
+
+    const updatedDeck = replaceSlideInDeck(parsed.deck, currentIndex, updatedSlide);
+    const signature = canonicalSignature(updatedDeck);
+    pendingSavedSignatureRef.current = signature;
+
+    try {
+      await onSlideUpdated(updatedDeck);
+    } catch (err) {
+      // The save failed, so no deck is coming back; don't let this stale
+      // signature hide a later, genuine change.
+      if (pendingSavedSignatureRef.current === signature) {
+        pendingSavedSignatureRef.current = null;
+      }
+      throw err;
+    }
   }
 
   if (extracted.status === "empty") {
@@ -200,6 +297,7 @@ export function SlideDataViewer({ slideshowDeck, initialIndex = 0, lesson }: Sli
           lesson={lesson}
           slideNumber={current.number}
           slideTitle={current.title}
+          onApplySlide={onSlideUpdated ? handleApplySlide : undefined}
         />
       ) : null}
     </div>

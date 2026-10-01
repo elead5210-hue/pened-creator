@@ -254,8 +254,9 @@ full on every full regression pass** (its sections 3 to 7 at least).
 
 ### 10. Slide Data step (per-slide data view)
 
-This step follows the deck saved in step 9. It is a read-only view of the
-saved deck, one slide per card.
+This step follows the deck saved in step 9. It shows the saved deck, one
+slide per card, and its "Add images" modal lets you apply an AI's updated
+slide back to the deck.
 
 **Step order, numbering and locked state**
 
@@ -334,12 +335,12 @@ saved deck, one slide per card.
 
 **"Add images" prompt modal (per slide)**
 
-This is a read-only view: the modal only displays a prompt to take to an
-AI assistant. Saving the AI's response back to the deck is deliberately
-deferred to a later update, so nothing in this section should change the
-saved deck. Run it on a lesson that has a saved deck and at least two
+The modal shows a prompt to take to an AI assistant and, under it, a
+place to paste the AI's reply and apply it to the slide, which saves the
+updated deck. Run it on a lesson that has a saved deck and at least two
 uploaded images (from the Image Generation step), plus one image prompt
-that has no uploaded image.
+that has no uploaded image. Copying and downloading the prompt never
+change the deck; only a successful **Apply to slide** does.
 
 - [ ] Open the Slide Data step on the first slide.
 - [ ] **Expected:** the card header shows an "Add images" button whose
@@ -347,8 +348,9 @@ that has no uploaded image.
       when the step is locked, empty or showing the invalid-deck alert.
 - [ ] Click **Add images**.
 - [ ] **Expected:** a modal titled "Add images to slide 1" opens over the
-      page, with a description saying nothing is saved from it, a
-      read-only prompt textarea, and Close, Download as Text and Copy to
+      page, with a description of what the modal does, a read-only prompt
+      textarea, a labelled textarea for pasting the AI's response with an
+      **Apply to slide** button, and Close, Download as Text and Copy to
       Clipboard buttons.
 - [ ] Read the prompt.
 - [ ] **Expected:** it contains this slide's data (its id, title and
@@ -379,9 +381,11 @@ that has no uploaded image.
 - [ ] **Expected:** a "Downloaded." toast appears and a `.txt` file is
       saved, named like `<project id>_<lesson node id>_slide-<N>_images-prompt.txt`,
       whose contents match the prompt shown.
-- [ ] Close the modal and check the Slide Data step.
+- [ ] Close the modal without applying anything and check the Slide Data
+      step.
 - [ ] **Expected:** the deck, the current slide and the saved-deck summary
-      are unchanged, and no save request was sent (check the Network tab).
+      are unchanged, and copying or downloading sent no save request
+      (check the Network tab).
 
 **No uploaded images**
 
@@ -390,8 +394,89 @@ that has no uploaded image.
 - [ ] **Expected:** the modal shows a clear "No images uploaded yet"
       message that points to the Image Generation step. The prompt tells
       the AI to return the slide unchanged and not to invent images, and
-      **Copy to Clipboard** and **Download as Text** are disabled. Close
-      still works.
+      **Copy to Clipboard** and **Download as Text** are disabled. The paste
+      area is disabled or hidden (there is nothing to apply), no save
+      request can be sent from the modal, and Close still works.
+
+**Apply a valid AI response**
+
+Use a lesson with a saved deck of three or more slides and at least two
+uploaded images. Open **Add images** on slide 2, copy the prompt, and get
+(or hand-write) a reply that is the complete slide as JSON: same slide id,
+every original element unchanged, plus one or more new `image` elements
+whose `src` is copied from the uploaded images list.
+
+- [ ] Paste the reply into the response textarea and click **Apply to
+      slide**.
+- [ ] **Expected:** while saving, the button and the textarea are disabled
+      and the modal cannot be dismissed (Escape, a click outside and Close
+      do nothing). Then a success toast appears, the modal closes, and
+      focus returns to the **Add images** button.
+- [ ] **Expected:** the viewer stays on slide 2 (it does not jump back to
+      slide 1), and the card now shows the new image elements with their
+      type, position, size and source. Every other slide is unchanged.
+- [ ] Check the Network tab.
+- [ ] **Expected:** exactly one save request was sent, and it succeeded.
+- [ ] Reload the lesson page and open Slide Data on slide 2.
+- [ ] **Expected:** the new image elements are still there (the change was
+      saved on the server, not just held in this browser).
+- [ ] Open the "Open in pened-tools" link from the slideshow step.
+- [ ] **Expected:** the deck still opens and plays, and the new images are
+      shown on slide 2.
+- [ ] **Expected:** the lesson still has exactly one slideshow entry in its
+      interactive content, and other interactive content is untouched.
+- [ ] Reply wrapped in a code fence or with a sentence of prose before and
+      after the JSON, then click **Apply to slide**.
+- [ ] **Expected:** the JSON is still found and applied as above.
+- [ ] In the Generate Slideshow Data step, save a different deck, then open
+      Slide Data.
+- [ ] **Expected:** a deck replaced from that step still resets the viewer
+      to the first slide, unlike an update made from the modal.
+
+**Invalid responses**
+
+For each case below, paste the reply and click **Apply to slide**.
+
+- [ ] Text that is not valid JSON (for example a truncated reply).
+- [ ] A reply that changes the slide id.
+- [ ] A reply that removes an original element.
+- [ ] A reply that edits an original element (for example moves it or
+      changes its text).
+- [ ] A new image element whose `src` is not in the uploaded images list
+      (an invented file name).
+- [ ] A new element that is not of type `image`.
+- [ ] A new element whose id duplicates another element's id.
+- [ ] A reply that adds no new image elements.
+- [ ] **Expected (each case):** an alert lists the problems by field path,
+      nothing is saved (no save request in the Network tab, and the deck
+      is unchanged after a reload), the modal stays open, and the pasted
+      text is kept so it can be fixed.
+- [ ] Fix the pasted text and click **Apply to slide** again.
+- [ ] **Expected:** the earlier errors clear and the corrected reply saves
+      as described above.
+
+**Failed save**
+
+- [ ] With a valid reply pasted, make the save fail (in DevTools block the
+      save request, go offline, or sign out in another tab so the session
+      expires), then click **Apply to slide**.
+- [ ] **Expected:** a message that the save failed is shown, worded
+      differently from the validation problems list. The modal stays open,
+      the button and textarea are enabled again, the pasted text is kept,
+      and the deck is unchanged after a reload.
+- [ ] Undo the failure (unblock, go back online, sign in again) and click
+      **Apply to slide** again.
+- [ ] **Expected:** the save succeeds as described above.
+
+**Resetting the paste area**
+
+- [ ] Paste some text and trigger a validation error, then close the modal
+      and open it again on the same slide.
+- [ ] **Expected:** the textarea is empty and no error is shown.
+- [ ] Paste some text, then close the modal, move to another slide and
+      open the modal again.
+- [ ] **Expected:** the textarea is empty, no error is shown, and the
+      title and prompt are for the new slide.
 
 **Keyboard, focus and screen reader**
 
@@ -408,10 +493,24 @@ that has no uploaded image.
       button.
 - [ ] With a screen reader, open the modal.
 - [ ] **Expected:** it is announced as a dialog named "Add images to slide
-      N" and described by the line saying nothing is saved from it. The
-      textarea is announced as "Generated prompt (read-only)" and its
+      N" and described by its description line. The
+      prompt textarea is announced as "Generated prompt (read-only)" and its
       contents can be read. The no-images message (when shown) is
       announced as a status.
+- [ ] Tab to the response textarea.
+- [ ] **Expected:** it has a visible label and is announced by that label.
+      Tab then reaches **Apply to slide**, and the order stays inside the
+      modal.
+- [ ] Click **Apply to slide** with an invalid reply, using the keyboard.
+- [ ] **Expected:** the problems are shown in an alert that a screen reader
+      announces without moving focus there manually, the textarea is
+      linked to the message through its description, and focus lands on the
+      textarea or the error so the user can fix the text without hunting
+      for it.
+- [ ] Apply a valid reply using only the keyboard.
+- [ ] **Expected:** the saving state is not interruptible by Escape, the
+      modal closes when the save succeeds, and focus returns to the **Add
+      images** button.
 - [ ] Open the modal, then save a different deck for the lesson in another
       tab and let this tab refresh.
 - [ ] **Expected:** the modal closes with the reset to the first slide, and
@@ -453,15 +552,26 @@ pipeline:
   replaced.
 - The per-slide "Add images" modal opens from every slide with a prompt
   built from that slide's data and only the lesson's uploaded images,
-  shows a clear no-images state (with copy and download disabled), copies
-  and downloads exactly the prompt shown, is fully keyboard and screen
-  reader accessible, and returns focus to the **Add images** button when
-  it closes. It never changes or saves the deck: saving the AI's response
-  is deliberately deferred to a later update.
+  shows a clear no-images state (with copy, download and the paste area
+  unavailable), copies and downloads exactly the prompt shown, is fully
+  keyboard and screen reader accessible, and returns focus to the **Add
+  images** button when it closes. Copying and downloading never change
+  the deck.
+- Applying a valid AI response through **Apply to slide** saves the
+  updated deck once through pened-server, shows the new image elements on
+  that slide, keeps the viewer on that slide, survives a reload, still
+  opens in pened-tools, and leaves exactly one slideshow entry. An invalid
+  response (bad JSON, a changed slide id, removed or edited existing
+  elements, an invented `src`, a non-image or duplicate-id element, or no
+  new images) saves nothing, lists its problems by field path and keeps the
+  pasted text. A failed save shows its own message, keeps the pasted text
+  and can be retried. The pasted text and errors are cleared when the
+  modal closes or the slide changes, and the textarea and error messages
+  work with the keyboard and a screen reader.
 
 ## Sign-off
 
 - [ ] `npm run verify` passed (no unresolved imports)
-- [ ] Full walkthrough (steps 1–10, including the "Add images" prompt modal) passed
+- [ ] Full walkthrough (steps 1–10, including the "Add images" modal and applying the AI's response) passed
 - [ ] `slideshow-lesson-id-links-checklist.md` run (sections 3 to 7)
 - Tested by: ______________________  Date: ______________________

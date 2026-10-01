@@ -72,7 +72,9 @@ The source audit this was derived from lives in
   content: a background refresh that supplies an identical deck keeps
   the user's current slide, while any change in deck content (for
   example a re-saved deck, including one with fewer slides) resets the
-  view to the first slide. `clampSlideIndex` is only a safeguard that
+  view to the first slide (the one exception is a deck the viewer itself
+  just handed off to be saved from the "Add images" flow, described
+  below). `clampSlideIndex` is only a safeguard that
   keeps an out-of-range index (such as a too-large or negative
   `initialIndex`) within the deck; it is not what handles a changed or
   shrunken deck. The card region
@@ -106,24 +108,28 @@ The source audit this was derived from lives in
   is given that slide's data, so it follows navigation: closing it,
   moving to another slide and opening it again shows the prompt for the
   new slide. If the deck's content changes while the modal is open (for
-  example the deck is re-saved), the modal closes together with the reset
-  to the first slide, and focus is not pulled back to the button because
+  example the deck is re-saved in the Generate Slideshow Data step), the
+  modal closes together with the reset to the first slide, and focus is not pulled back to the button because
   the user did not close it. When the modal closes any other way (Escape,
   the Close button or a click outside it), focus returns to the "Add
   images" button. The viewer restores it explicitly, and the modal also
   restores focus to the element that had it when the modal opened, so
   this does not depend only on the dialog primitive's own focus handling.
 
-  `SlideImagesPromptModal.tsx` is a read-only modal built on the `Dialog`
+  `SlideImagesPromptModal.tsx` is a modal built on the `Dialog`
   primitive (Radix), which provides the focus trap, Escape to close,
   click-outside dismissal and the dialog ARIA roles. Props: `open`,
-  `onOpenChange`, `slide`, `lesson`, and optional `slideNumber` and
+  `onOpenChange`, `slide`, `lesson`, and optional `slideNumber`,
   `slideTitle` (used for the title, the description and the download
-  filename). It builds the prompt with `slideImagesPromptBuilder`'s
+  filename) and `onApplySlide` (see "Pasting the AI's response and
+  saving the slide" below; without it the modal is read-only and only
+  shows the prompt). It builds the prompt with `slideImagesPromptBuilder`'s
   `buildSlideImagesPrompt` only while it is open, and rebuilds it when the
   slide or lesson changes. The dialog is labelled by its title ("Add
   images to slide N") and described by a line saying nothing is saved
-  from it. The prompt is shown in a read-only textarea with a visible
+  from it when there is no `onApplySlide`, or by a line saying that
+  applying a pasted response replaces the slide in the saved deck when
+  there is one. The prompt is shown in a read-only textarea with a visible
   label, which selects its text on focus, and an uploaded-image count is
   linked to it with `aria-describedby`. The footer has Close, "Download
   as Text" and "Copy to Clipboard" buttons. Copy and download use the
@@ -138,13 +144,92 @@ The source audit this was derived from lives in
   nothing to place. A missing `lesson` is treated the same way. Only
   images that have actually been uploaded are listed in the prompt.
 
-  **Deferred.** Saving the AI's response is deliberately not part of
-  this update. The modal only displays the prompt for the user to take to
-  an AI assistant; nothing is parsed, validated or saved when it is used,
-  and the deck is never changed by it. Pasting the response back and
-  saving the updated slide is planned for a later update. Tests are in
-  `SlideImagesPromptModal.test.tsx` and in the "Add images button and
-  prompt modal" section of `SlideDataViewer.test.tsx`.
+  **Pasting the AI's response and saving the slide.** When the modal is
+  given `onApplySlide`, a paste area sits under the read-only prompt: a
+  labelled "Paste the AI's response" textarea with a hint, and an "Apply
+  to slide" button. Without `onApplySlide` none of this is shown. When the
+  lesson has no uploaded images (or there is no lesson) the textarea and
+  button are disabled and the hint explains that there is nothing to
+  apply.
+
+  Applying runs the pasted text through
+  `slideImagesResponse.ts`'s `parseSlideImagesResponse`, with the slide
+  currently shown and `getAllowedImageSrcs(lesson)`. An empty paste gets
+  "Paste the AI's response first." If the response fails, the modal shows
+  a `role="alert"` message, "N problems were found with the response:",
+  with one list item per problem in the form `path: message` (for example
+  `slide.elements[1].src: ...`), and the pasted text is kept so it can be
+  fixed and retried. The alert is focusable and receives focus every time
+  an error is shown, the textarea is linked to it with `aria-describedby`
+  (together with the hint) and gets `aria-invalid`, so keyboard and
+  screen-reader users land on the problem. If the response passes, the
+  modal calls `onApplySlide(slide)` with the validated updated slide.
+
+  A failed save is shown separately from validation problems: if
+  `onApplySlide` rejects, the alert reads "Couldn't save the slide" with
+  the error's own message (a general message if it has none) and says the
+  pasted text is kept. The modal stays open so the user can apply it
+  again. A validation error and a save error never show together: each
+  replaces the other. While a save is in flight the textarea, the Apply
+  button (which reads "Saving...") and the Close button are disabled, the
+  dialog is marked `aria-busy`, and Escape, the corner close button and a
+  click outside the modal are blocked, so the modal can't be dismissed
+  mid-save and a second save can't start. When the save succeeds the modal
+  shows a "Images added to the slide." toast, clears the pasted text and
+  closes, and focus returns to the "Add images" button as for any other
+  close. The pasted text and any errors are cleared whenever the modal
+  opens or closes and whenever the slide changes (compared by content, so
+  a background refresh that hands back an identical slide keeps what the
+  user typed), so a response written for one slide is never applied to
+  another.
+
+  **Viewer wiring (`onSlideUpdated`).** `SlideDataViewer.tsx` takes an
+  optional `onSlideUpdated(deck)` prop (it may return a promise). Only
+  when it is provided does the viewer pass the modal an `onApplySlide`
+  handler, so without it the modal stays read-only. The handler parses
+  the saved deck with `parseAndValidateDeck` (it throws if the saved deck
+  can't be read), builds the new deck with `replaceSlideInDeck(deck,
+  currentIndex, slide)`, so only the slide currently shown changes, and
+  passes it to `onSlideUpdated`. A rejection from `onSlideUpdated` is
+  passed on to the modal.
+
+  **Keeping the user's place after a save.** Normally any change in the
+  deck's content resets the viewer to the first slide and closes the
+  modal. A save made from the viewer must not do that, because the saved
+  deck comes back as the new `slideshowDeck` prop. So before calling
+  `onSlideUpdated` the viewer remembers a signature of the deck it is
+  handing off. When the deck prop changes, it compares the new deck with
+  that signature: if they match, it is the deck it just saved, so the view
+  stays on the edited slide and shows the new images. Any other change,
+  such as a deck re-saved in the Generate Slideshow Data step, still
+  resets to the first slide and closes the modal. The signature ignores
+  object key order and whether the deck is an object or JSON text, because
+  the server can return the saved deck with its keys in a different order.
+  The remembered signature is used once, and it is cleared if the save
+  fails, so a failed save can't hide a later genuine change.
+
+  **Route wiring.** `lessons.$lessonId.tsx` passes the viewer a
+  `handleSlideUpdated` handler as `onSlideUpdated`. It saves the deck with
+  `saveSlideshowDeck(lessonRecord.id, deck)`, which validates the whole
+  deck again and stores it as the lesson's single slideshow
+  `interactiveContent` entry, and then sets `lessonRecord` to the record
+  the server returned. It does not bump `slideDataResetKey`, which would
+  remount the viewer on slide 1; that counter is still bumped when the
+  lesson changes or a deck is re-saved in the Generate Slideshow Data
+  step. It deliberately doesn't catch errors: a `SlideshowSaveError`
+  (expired session, oversized deck, network error, an invalid deck)
+  propagates through the viewer to the modal, which shows it.
+
+  Tests are in `SlideImagesPromptModal.test.tsx` (the paste area, each
+  kind of validation error, a failed save, the saving state, clearing and
+  accessibility), in the "Add images button and prompt modal" section of
+  `SlideDataViewer.test.tsx` (the real modal and viewer together), and in
+  `SlideDataViewer.slideUpdate.test.tsx` (the saved deck, staying on the
+  edited slide, and resets from elsewhere, using a stand-in for the
+  modal). The pure logic is tested in
+  `lib/curriculum/phase2-content/slideImagesResponse.test.ts` and
+  `slideshowInteractiveContent.test.ts` (a lesson keeps exactly one
+  slideshow entry).
 
   `StepSidebar.tsx` gives each step button an accessible name that
   includes its position and state (for example "Step 8 of 9: Slide Data,
@@ -159,8 +244,10 @@ The source audit this was derived from lives in
   `lessons.$lessonId.tsx` shows a "Next: Slide Data" call-to-action
   above `SlideshowDeckGenerator`. The route also keys `SlideDataViewer`
   on the lesson id and a reset counter that is bumped when the lesson
-  changes or the deck is re-saved, so the viewer never carries a stale
-  slide position over.
+  changes or the deck is re-saved in the Generate Slideshow Data step, so
+  the viewer never carries a stale slide position over. A slide updated
+  from the viewer itself is saved without bumping that counter (see
+  "Route wiring" above), so the user stays on the slide they edited.
 - `toolRenderers/` — `ContentDispatcher.tsx`, which now routes every
   content block through `ToolContentFrame` (no local renderer
   components remain in this subfolder).
@@ -200,7 +287,9 @@ consumes:
   `StepSidebar.tsx`; the route reads `getPhase2StepStatuses` (which now
   includes `"slide-data"`) from it.
 - `schema` and `db` are not imported by the Slide Data components; they
-  receive the saved deck as a prop from the lesson route.
+  receive the saved deck as a prop from the lesson route, and saving an
+  updated slide is done by the route (`saveSlideshowDeck`, see "Imported
+  by" below), which the viewer reaches through `onSlideUpdated`.
 
 ### `@/lib/tools/`
 - `toolsClient` — `getTools` — used in `PasteResponseForm.tsx` to
@@ -227,9 +316,11 @@ for its own parent dependencies, which point back into
   `SlideshowDeckGenerator.tsx`.
 - `slideshowDeckValidator` — `parseAndValidateDeck`, `validateDeck`,
   `DeckError`, `SlideshowDeck` (types) — used in
-  `PasteSlideshowDeckResponseForm.tsx`; `formatDeckErrors` — used in
+  `PasteSlideshowDeckResponseForm.tsx`; `formatDeckErrors`,
+  `parseAndValidateDeck`, `SlideData`, `SlideshowDeck` (types) — used in
   `SlideDataViewer.tsx`; `SlideData`, `SlideElementData` (types) — used
-  in `SlideDataCard.tsx`.
+  in `SlideDataCard.tsx`; `SlideData`, `DeckError` (types) — used in
+  `SlideImagesPromptModal.tsx`.
 - `slideshowDeckSlides` — `extractSlides`, `clampSlideIndex` — used in
   `SlideDataViewer.tsx` to turn the saved deck into a normalized,
   ordered slide list.
@@ -237,6 +328,11 @@ for its own parent dependencies, which point back into
   `SlideImagesLessonInput` (type) — used in `SlideImagesPromptModal.tsx`
   to build the per-slide "add images" prompt from the current slide and
   the lesson's uploaded images.
+- `slideImagesResponse` — `getAllowedImageSrcs`,
+  `parseSlideImagesResponse` — used in `SlideImagesPromptModal.tsx` to
+  check a pasted response against the current slide and the uploaded
+  images; `replaceSlideInDeck` — used in `SlideDataViewer.tsx` to build
+  the deck with the updated slide.
 - `slideshowToolUrl` — `resolveSlideshowLink` — used in
   `SlideshowDeckGenerator.tsx` to build its saved-deck summary's "Open
   in pened-tools" link from the lesson id (not from the deck).
@@ -305,7 +401,12 @@ file.
   `"slide-data"` step after `"slideshow-data"`; it stays locked until a
   slideshow deck is saved on the lesson. It passes its `lessonRecord` to
   `SlideDataViewer` as the `lesson` prop, which turns on the per-slide
-  "Add images" button.
+  "Add images" button, and its `handleSlideUpdated` as `onSlideUpdated`,
+  which turns on the modal's paste area. That handler takes a
+  `SlideshowDeck` (type from `slideshowDeckValidator`) and saves it with
+  `saveSlideshowDeck` from `@/lib/curriculum/shared/db`, so the viewer's
+  `onSlideUpdated` contract is `(deck: SlideshowDeck) => Promise<void> |
+  void` and a rejection must be passed on, not swallowed.
 - `src/routes/tools.tsx` and `src/routes/tools.interactive.tsx` —
   import `toolRenderers/ContentDispatcher` directly. These two
   dummy-data preview routes bypass the rest of this folder and only

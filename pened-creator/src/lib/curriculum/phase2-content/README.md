@@ -195,13 +195,104 @@ from.
   to add a second copy of an image the slide already shows, and to
   place new images so they don't overlap.
 
-  **Deliberately deferred.** Nothing here parses or saves the AI's
-  response: this module only produces the prompt text. Pasting the
-  response back, validating the updated slide and saving it to the deck
-  is planned for a later update. When that lands, validate the pasted
-  slide with `slideshowDeckValidator.ts` rather than adding a second
-  set of rules, and keep the schema rules in the prompt in sync with
-  that validator.
+  **Response handling.** Nothing in this module parses or saves the
+  AI's response: it only produces the prompt text. Parsing and checking
+  the response is done by `slideImagesResponse.ts` (below), which
+  validates through `slideshowDeckValidator.ts` rather than adding a
+  second set of rules. Keep the rules this prompt gives the AI in sync
+  with the checks in `slideImagesResponse.ts` and with that validator.
+- `slideImagesResponse.ts` — parses, validates and applies the AI's
+  response to the "add images" prompt
+  (`parseSlideImagesResponse`, `getAllowedImageSrcs`,
+  `replaceSlideInDeck`, `SlideImagesResponseResult`). It is pure and
+  deterministic: no I/O, no AI call, no saving, and it never mutates its
+  inputs. Tests are in `slideImagesResponse.test.ts`. It is used by the
+  Slide Data step's "Add images" flow: `SlideImagesPromptModal.tsx` calls
+  `getAllowedImageSrcs` and `parseSlideImagesResponse` when the user
+  applies a pasted response, and `SlideDataViewer.tsx` calls
+  `replaceSlideInDeck` to build the deck that is then saved (see "How an
+  updated slide is saved" below). Depends on `./slideshowDeckValidator`
+  and `./slideImagesPromptBuilder` (`getUploadedImageDescriptions`, used
+  by `getAllowedImageSrcs`).
+
+  **`parseSlideImagesResponse(raw, originalSlide, allowedSrcs)`** takes
+  the text pasted from the AI, the slide exactly as it is currently
+  saved, and the exact `src` values of the lesson's uploaded images (any
+  iterable of strings). It never throws and returns a discriminated
+  `SlideImagesResponseResult`: `{ ok: true, slide, addedElements, errors:
+  [] }` (the validated updated slide and the new image elements) or `{
+  ok: false, slide: null, addedElements: [], errors }`. Each error is a
+  `DeckError` (`{ path, message }`, so `formatDeckErrors` works on it),
+  with paths relative to the slide, such as `slide.elements[2].src`. An
+  error with path `"$"` means the problem is with the response as a
+  whole (no JSON object found, invalid JSON, or no uploaded images).
+
+  **Parsing and structure.** The text goes through `parseDeckJson`, so
+  code fences and stray prose around the object are tolerated. A wrapper
+  object is also unwrapped: `{ "slide": { ... } }`, or a deck
+  `{ "slides": [ ... ] }` (the slide with the original id, or the only
+  slide). The slide is then checked with `validateDeck` by placing it in
+  a minimal valid deck, and the paths are rewritten from `slides[0]` to
+  `slide`, so the structural rules (an `elements` array, element
+  `id`/`type`/`position`/`size`, an image element's `src`, and so on) are
+  exactly the deck validator's and are not duplicated here. If the slide
+  fails structurally, only those errors are returned.
+
+  **Checks against the original slide.** Once the slide is structurally
+  valid, every one of these is checked and all problems are reported
+  together: the slide `id` is unchanged; every other slide-level field
+  (`title`, `background`, anything else) is unchanged, neither added,
+  removed nor edited; every original element is still present, deeply
+  equal to the original (key order is ignored), and in its original
+  relative order; every new element has `type` `"image"`; every new
+  image's `src` is exactly (case-sensitively) one of `allowedSrcs`, so an
+  invented file or an external URL is rejected; new element ids are
+  unique among all of the slide's elements, including the existing ones;
+  and at least one image was added. When `allowedSrcs` is empty the
+  response is rejected straight away with a single `"$"` error, before
+  the text is read, because there is nothing to add.
+
+  **`getAllowedImageSrcs(lesson)`** returns the `src` of each uploaded
+  image in image-prompt order (using `getUploadedImageDescriptions`), so
+  the allowed list always matches the list shown in the prompt.
+
+  **`replaceSlideInDeck(deck, index, slide)`** returns a new deck with the
+  slide at `index` replaced. Every other slide, every other deck field and
+  the metadata are carried over untouched, and neither the deck nor the
+  slide is mutated. It throws a `RangeError` for an index that is not an
+  integer inside the deck. Pass it a deck from `parseAndValidateDeck`, and
+  the saved result must still go through `../shared/db.ts`'s
+  `saveSlideshowDeck`, which validates the whole deck again before
+  anything is stored.
+
+  **How an updated slide is saved.** The flow, from the pasted text to
+  the server, is:
+
+  1. `SlideImagesPromptModal.tsx` runs `parseSlideImagesResponse` on the
+     pasted text, with the slide currently shown and
+     `getAllowedImageSrcs(lesson)`. If it fails, the modal shows the
+     errors and nothing is saved.
+  2. On success the modal calls its `onApplySlide(slide)` prop, which
+     `SlideDataViewer.tsx` provides. The viewer parses the saved deck
+     with `parseAndValidateDeck`, builds the new deck with
+     `replaceSlideInDeck(deck, currentIndex, slide)` and passes it to its
+     `onSlideUpdated(deck)` prop.
+  3. `routes/lessons.$lessonId.tsx` implements `onSlideUpdated` with
+     `../shared/db.ts`'s `saveSlideshowDeck(lessonRecord.id, deck)`. That
+     function validates the whole deck again with `validateDeck` (a
+     failure is a `SlideshowSaveError` with reason `invalid_deck`), then
+     writes it with `upsertSlideshowEntry`, so the lesson ends up with
+     exactly one `"slideshow"` entry, any duplicates are dropped and
+     other tools' entries are left untouched. The route then stores the
+     lesson record the server returned. A deck saved this way is
+     therefore held to the same rules as one saved from the Generate
+     Slideshow Data step, and pened-tools can still load it by lesson id.
+  4. A failed save rejects back through the viewer to the modal, which
+     shows it as its own message, separate from the validation errors,
+     keeps the pasted text and stays open.
+
+  This module and `slideshowInteractiveContent.ts` stay pure: the only
+  I/O in this flow is `saveSlideshowDeck`.
 - `slideshowInteractiveContent.ts` — pure helpers for reading and
   writing a lesson's slideshow deck as an `interactiveContent` entry
   (`SLIDESHOW_TOOL_ID`, `InteractiveContentEntry`, `InteractiveContent`,
@@ -220,7 +311,13 @@ from.
   validation (see `slideshowDeckValidator.ts`); persistence is in
   `../shared/db.ts`, which stores the deck through pened-server as this
   entry, so the deck lives on the lesson and pened-tools can load it by
-  lesson id. No dependencies.
+  lesson id. Both saving a whole deck and saving a single updated slide
+  (see "How an updated slide is saved" above) go through it, so a lesson
+  always keeps exactly one slideshow entry. Tests are in
+  `slideshowInteractiveContent.test.ts`, including that a deck produced
+  by `replaceSlideInDeck` and written with `upsertSlideshowEntry` leaves
+  one slideshow entry and leaves other tools' entries untouched. No
+  dependencies.
 - `slideshowToolUrl.ts` — builds the link that opens a lesson's saved
   slideshow in pened-tools (`buildSlideshowUrl`, `resolveSlideshowLink`,
   `SlideshowLinkResult`, `SlideshowLinkErrorReason`). The link is
@@ -341,9 +438,19 @@ the one reverse edge noted under "Imported by" below
   once a deck is saved on the server, with a visible error when the
   lesson id is invalid or `VITE_TOOL_RENDERER_BASE_URL` is missing or
   invalid), `slideImagesPromptBuilder.ts` (`SlideImagesPromptModal.tsx`,
-  to build the per-slide "add images" prompt it displays).
+  to build the per-slide "add images" prompt it displays),
+  `slideImagesResponse.ts` (`SlideImagesPromptModal.tsx` —
+  `getAllowedImageSrcs`, `parseSlideImagesResponse`, to check a pasted
+  response; `SlideDataViewer.tsx` — `replaceSlideInDeck`, to build the
+  deck with the updated slide), and `slideshowDeckValidator.ts` types
+  and `parseAndValidateDeck` (`SlideDataViewer.tsx`). The tests for this
+  flow live next to the components that use it:
+  `SlideImagesPromptModal.test.tsx`, `SlideDataViewer.test.tsx` and
+  `SlideDataViewer.slideUpdate.test.tsx`.
 - **`routes/`** — `lessons.$lessonId.tsx` (`promptBuilder.ts`,
-  `lessonRecord.ts`).
+  `lessonRecord.ts`, and the `SlideshowDeck` type from
+  `slideshowDeckValidator.ts` for its slide-update handler, which saves
+  through `../shared/db.ts`'s `saveSlideshowDeck`).
 - **`lib/curriculum/shared/`** — `db.ts` imports `lessonRecord.ts`
   (`createLessonRecord`, `updateLessonRecord`, `setLessonStatus`,
   `setLessonGeneratedContent`, `setLessonImagePrompts`,

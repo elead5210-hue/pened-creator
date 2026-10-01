@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
@@ -608,6 +608,225 @@ describe("SlideDataViewer", () => {
 
       await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
       expect(screen.getByText("Content for x")).toBeTruthy();
+    });
+
+    describe("pasting the AI's response", () => {
+      type SaveFn = (deck: unknown) => Promise<void>;
+
+      const IMAGE_ELEMENT = {
+        id: "b-image-1",
+        type: "image",
+        position: { x: 400, y: 20 },
+        size: { width: 320, height: 240 },
+        src: "plant-cell.png",
+      };
+
+      /** Slide "b" as the AI should return it: the original element plus one new image. */
+      function updatedSlideB(overrides: Record<string, unknown> = {}) {
+        const original = makeSlide("b");
+        return { ...original, elements: [...original.elements, IMAGE_ELEMENT], ...overrides };
+      }
+
+      function getPasteTextarea() {
+        return screen.getByRole("textbox", { name: /paste the ai's response/i });
+      }
+
+      function pasteResponse(text: string) {
+        fireEvent.change(getPasteTextarea(), { target: { value: text } });
+      }
+
+      /** Renders three slides on slide 2 with the real modal open, ready for a response to be pasted. */
+      async function openOnSlideTwo(onSlideUpdated: SaveFn) {
+        const user = userEvent.setup();
+        const utils = render(
+          <SlideDataViewer
+            slideshowDeck={makeDeck([makeSlide("a"), makeSlide("b"), makeSlide("c")])}
+            lesson={LESSON}
+            onSlideUpdated={onSlideUpdated}
+          />,
+        );
+
+        fireEvent.click(getNext());
+        const button = getAddImagesButton(2);
+        act(() => {
+          button.focus();
+        });
+        await user.click(button);
+        await screen.findByRole("dialog", { name: "Add images to slide 2" });
+
+        return {
+          user,
+          ...utils,
+          setDeck: (deck: unknown) =>
+            utils.rerender(<SlideDataViewer slideshowDeck={deck} lesson={LESSON} onSlideUpdated={onSlideUpdated} />),
+        };
+      }
+
+      async function applyResponse(user: ReturnType<typeof userEvent.setup>, text: string) {
+        pasteResponse(text);
+        await user.click(screen.getByRole("button", { name: "Apply to slide" }));
+      }
+
+      it("shows the paste area when onSlideUpdated is provided", async () => {
+        await openOnSlideTwo(vi.fn<SaveFn>().mockResolvedValue(undefined));
+
+        expect(getPasteTextarea()).toBeTruthy();
+        expect(screen.getByRole("button", { name: "Apply to slide" })).toBeTruthy();
+      });
+
+      it("does not show the paste area when onSlideUpdated is not provided", async () => {
+        const user = userEvent.setup();
+        render(<SlideDataViewer slideshowDeck={makeDeck([makeSlide("a")])} lesson={LESSON} />);
+
+        await user.click(getAddImagesButton(1));
+        await screen.findByRole("dialog");
+
+        expect(screen.queryByRole("textbox", { name: /paste the ai's response/i })).toBeNull();
+        expect(screen.queryByRole("button", { name: "Apply to slide" })).toBeNull();
+      });
+
+      it("calls onSlideUpdated with a deck where only the current slide has the new image", async () => {
+        const onSlideUpdated = vi.fn<SaveFn>().mockResolvedValue(undefined);
+        const { user } = await openOnSlideTwo(onSlideUpdated);
+
+        await applyResponse(user, JSON.stringify(updatedSlideB()));
+
+        await waitFor(() => expect(onSlideUpdated).toHaveBeenCalledTimes(1));
+        const savedDeck = onSlideUpdated.mock.calls[0][0] as { slides: unknown[]; metadata: unknown; id: string };
+        expect(savedDeck.slides).toHaveLength(3);
+        expect(savedDeck.slides[0]).toEqual(makeSlide("a"));
+        expect(savedDeck.slides[1]).toEqual(updatedSlideB());
+        expect(savedDeck.slides[2]).toEqual(makeSlide("c"));
+        expect(savedDeck.id).toBe("deck-1");
+        expect(savedDeck.metadata).toEqual({ title: "My Deck" });
+      });
+
+      it("accepts a response in a code fence with stray prose around it", async () => {
+        const onSlideUpdated = vi.fn<SaveFn>().mockResolvedValue(undefined);
+        const { user } = await openOnSlideTwo(onSlideUpdated);
+
+        await applyResponse(
+          user,
+          `Here you go:\n\`\`\`json\n${JSON.stringify(updatedSlideB(), null, 2)}\n\`\`\``,
+        );
+
+        await waitFor(() => expect(onSlideUpdated).toHaveBeenCalledTimes(1));
+      });
+
+      it("closes the modal and returns focus to the Add images button", async () => {
+        const { user } = await openOnSlideTwo(vi.fn<SaveFn>().mockResolvedValue(undefined));
+
+        await applyResponse(user, JSON.stringify(updatedSlideB()));
+
+        await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+        await waitFor(() => expect(getAddImagesButton(2)).toHaveFocus(), { timeout: 2000 });
+      });
+
+      it("shows the new image in the card once the saved deck comes back", async () => {
+        const onSlideUpdated = vi.fn<SaveFn>().mockResolvedValue(undefined);
+        const { user, setDeck } = await openOnSlideTwo(onSlideUpdated);
+        expect(screen.queryByText("plant-cell.png")).toBeNull();
+
+        await applyResponse(user, JSON.stringify(updatedSlideB()));
+        await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+        setDeck(onSlideUpdated.mock.calls[0][0]);
+
+        expect(screen.getByText("plant-cell.png")).toBeTruthy();
+        expect(screen.getByText("Content for b")).toBeTruthy();
+      });
+
+      it("stays on the edited slide when the saved deck comes back", async () => {
+        const onSlideUpdated = vi.fn<SaveFn>().mockResolvedValue(undefined);
+        const { user, setDeck } = await openOnSlideTwo(onSlideUpdated);
+
+        await applyResponse(user, JSON.stringify(updatedSlideB()));
+        await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+        setDeck(onSlideUpdated.mock.calls[0][0]);
+
+        expect(screen.getAllByText("Slide 2 of 3").length).toBeGreaterThan(0);
+        expect(screen.queryByText("Content for a")).toBeNull();
+        expect(getAddImagesButton(2)).toBeTruthy();
+      });
+
+      it("shows errors for an invalid response and does not call onSlideUpdated", async () => {
+        const onSlideUpdated = vi.fn<SaveFn>().mockResolvedValue(undefined);
+        const { user } = await openOnSlideTwo(onSlideUpdated);
+
+        await applyResponse(user, JSON.stringify(updatedSlideB({ elements: [{ ...IMAGE_ELEMENT, src: "invented.png" }] })));
+
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent(/problems were found with the response/i);
+        expect(alert).toHaveTextContent(/was removed/i);
+        expect(alert).toHaveTextContent(/invented\.png/);
+        expect(onSlideUpdated).not.toHaveBeenCalled();
+        // The modal stays open with the text kept, and the view hasn't moved.
+        expect(screen.getByRole("dialog", { name: "Add images to slide 2" })).toBeTruthy();
+        expect((getPasteTextarea() as HTMLTextAreaElement).value).toContain("invented.png");
+        expect(screen.getAllByText("Slide 2 of 3").length).toBeGreaterThan(0);
+      });
+
+      it("shows an error for text that is not JSON", async () => {
+        const onSlideUpdated = vi.fn<SaveFn>().mockResolvedValue(undefined);
+        const { user } = await openOnSlideTwo(onSlideUpdated);
+
+        await applyResponse(user, "Sorry, I can't do that.");
+
+        expect(await screen.findByRole("alert")).toHaveTextContent(/no json object found/i);
+        expect(onSlideUpdated).not.toHaveBeenCalled();
+      });
+
+      it("shows a failed save as its own message and keeps the modal open", async () => {
+        const onSlideUpdated = vi.fn<SaveFn>().mockRejectedValue(new Error("Your session expired. Sign in again."));
+        const { user } = await openOnSlideTwo(onSlideUpdated);
+
+        await applyResponse(user, JSON.stringify(updatedSlideB()));
+
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent("Couldn't save the slide");
+        expect(alert).toHaveTextContent("Your session expired. Sign in again.");
+        expect(alert).not.toHaveTextContent(/problems? (was|were) found/i);
+        expect(onSlideUpdated).toHaveBeenCalledTimes(1);
+        expect(screen.getByRole("dialog", { name: "Add images to slide 2" })).toBeTruthy();
+        expect((getPasteTextarea() as HTMLTextAreaElement).value).toBe(JSON.stringify(updatedSlideB()));
+        // Nothing changed in the card.
+        expect(screen.getAllByText("Slide 2 of 3").length).toBeGreaterThan(0);
+      });
+
+      it("lets the user retry after a failed save", async () => {
+        const onSlideUpdated = vi
+          .fn<SaveFn>()
+          .mockRejectedValueOnce(new Error("Network error"))
+          .mockResolvedValueOnce(undefined);
+        const { user, setDeck } = await openOnSlideTwo(onSlideUpdated);
+
+        await applyResponse(user, JSON.stringify(updatedSlideB()));
+        await screen.findByRole("alert");
+
+        await user.click(screen.getByRole("button", { name: "Apply to slide" }));
+
+        await waitFor(() => expect(onSlideUpdated).toHaveBeenCalledTimes(2));
+        await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+        setDeck(onSlideUpdated.mock.calls[1][0]);
+        expect(screen.getByText("plant-cell.png")).toBeTruthy();
+        expect(screen.getAllByText("Slide 2 of 3").length).toBeGreaterThan(0);
+      });
+
+      it("disables the paste area when the lesson has no uploaded images", async () => {
+        const user = userEvent.setup();
+        render(
+          <SlideDataViewer
+            slideshowDeck={makeDeck([makeSlide("a")])}
+            lesson={LESSON_WITHOUT_IMAGES}
+            onSlideUpdated={vi.fn<SaveFn>().mockResolvedValue(undefined)}
+          />,
+        );
+
+        await user.click(getAddImagesButton(1));
+        await screen.findByRole("dialog");
+
+        expect((getPasteTextarea() as HTMLTextAreaElement).disabled).toBe(true);
+        expect((screen.getByRole("button", { name: "Apply to slide" }) as HTMLButtonElement).disabled).toBe(true);
+      });
     });
   });
 });
