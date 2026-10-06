@@ -185,6 +185,15 @@ describe("SlideImagesPromptModal", () => {
       expect(value).toContain("plant-cell.png");
     });
 
+    it("lists the exact background-removed image URL as the src when one exists", () => {
+      const noBgUrl = "https://cdn.example.com/lessons/plant-cell-nobg.png?v=3";
+      render(<Harness lesson={{ ...LESSON, imagesNoBg: { "img-01": noBgUrl } }} />);
+
+      const { value } = getPromptTextarea();
+      expect(value).toContain(`src: ${noBgUrl}`);
+      expect(value).not.toContain("plant-cell.png");
+    });
+
     it("leaves out images that were never uploaded", () => {
       render(<Harness />);
 

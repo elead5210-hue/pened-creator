@@ -23,6 +23,11 @@ export interface SlideImagesLessonInput {
   imagePrompts?: unknown;
   /** Uploaded image filenames/paths keyed by image prompt id. */
   images?: Record<string, unknown> | null;
+  /**
+   * Background-removed image URLs/paths keyed by image prompt id. When an
+   * image has an entry here, that exact value is used as its `src`.
+   */
+  imagesNoBg?: Record<string, unknown> | null;
 }
 
 /** An image that has actually been uploaded for the lesson. */
@@ -63,6 +68,8 @@ export function getUploadedImageDescriptions(lesson: SlideImagesLessonInput | nu
   if (!Array.isArray(prompts)) return [];
 
   const images = lesson?.images && typeof lesson.images === "object" ? lesson.images : {};
+  const imagesNoBg: Record<string, unknown> =
+    lesson?.imagesNoBg && typeof lesson.imagesNoBg === "object" ? lesson.imagesNoBg : {};
   const result: UploadedImageDescription[] = [];
 
   for (const prompt of prompts) {
@@ -72,7 +79,8 @@ export function getUploadedImageDescriptions(lesson: SlideImagesLessonInput | nu
     const id = asString(item.id);
     if (!id) continue;
 
-    const src = asString(images[id]);
+    // Prefer the exact background-removed image URL; fall back to the uploaded image.
+    const src = asString(imagesNoBg[id]) || asString(images[id]);
     if (!src) continue;
 
     result.push({

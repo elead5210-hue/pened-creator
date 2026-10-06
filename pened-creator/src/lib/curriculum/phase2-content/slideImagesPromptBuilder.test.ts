@@ -136,6 +136,29 @@ describe("buildSlideImagesPrompt", () => {
       expect(prompt).toContain("description: Close-up of chloroplasts");
     });
 
+    it("lists the exact background-removed image URL as the src when one exists", () => {
+      const noBgUrl = "https://cdn.example.com/lessons/img-01-nobg.png?v=2";
+      const { prompt, images } = buildSlideImagesPrompt(
+        makeSlide(),
+        makeLesson({ imagesNoBg: { "img-01": noBgUrl } }),
+      );
+
+      expect(images.find((image) => image.id === "img-01")?.src).toBe(noBgUrl);
+      expect(prompt).toContain(`src: ${noBgUrl}`);
+      expect(prompt).not.toContain("src: img-01.png");
+      // An image without a background-removed version keeps its uploaded src.
+      expect(prompt).toContain("src: img-02.png");
+    });
+
+    it("falls back to the uploaded src when the background-removed value is blank or not a string", () => {
+      const { images } = buildSlideImagesPrompt(
+        makeSlide(),
+        makeLesson({ imagesNoBg: { "img-01": "  ", "img-02": 7 } }),
+      );
+
+      expect(images.map((image) => image.src)).toEqual(["img-01.png", "img-02.png"]);
+    });
+
     it("does not list images that were never uploaded", () => {
       const { prompt, images } = buildSlideImagesPrompt(makeSlide(), makeLesson({ images: { "img-01": "img-01.png" } }));
 

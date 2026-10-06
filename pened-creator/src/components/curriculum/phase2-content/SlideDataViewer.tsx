@@ -21,10 +21,14 @@ export interface SlideDataViewerProps {
   /** Optional zero-based slide index to start on (clamped into range). */
   initialIndex?: number;
   /**
-   * The lesson record (or any object with `imagePrompts` and `images`). When
-   * supplied, each slide card shows an "Add images" button that opens a
-   * read-only modal with the prompt for the slide currently shown, listing
-   * the lesson's uploaded images. When omitted, the button is not shown.
+   * The lesson record (or any object with `imagePrompts`, `images` and,
+   * optionally, `imagesNoBg`). When supplied, each slide card shows an
+   * "Add images" button that opens a modal with the prompt for the slide
+   * currently shown, listing the lesson's uploaded images. An image that has a
+   * background-removed version is listed with that version's exact URL as its
+   * `src`, so the correct image is applied. The whole lesson object is passed
+   * to the modal unchanged, so `imagesNoBg` reaches the prompt builder. When
+   * omitted, the button is not shown.
    */
   lesson?: SlideImagesPromptLesson | null;
   /**

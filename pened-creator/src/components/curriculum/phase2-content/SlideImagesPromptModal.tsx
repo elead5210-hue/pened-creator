@@ -37,7 +37,12 @@ export interface SlideImagesPromptModalProps {
   onOpenChange: (open: boolean) => void;
   /** The slide's data object exactly as saved in the deck (the slide currently shown). */
   slide: unknown;
-  /** The lesson record (or any object with `imagePrompts` and `images`). */
+  /**
+   * The lesson record (or any object with `imagePrompts` and `images`). When it
+   * also has `imagesNoBg`, the exact background-removed image URL for each image
+   * is passed through to the prompt builder and listed in the prompt as that
+   * image's `src`.
+   */
   lesson: SlideImagesPromptLesson | null | undefined;
   /** One-based slide number, for the title and download filename. */
   slideNumber?: number;
