@@ -49,8 +49,10 @@ interface ImagePromptCardProps {
    * saveBackgroundRemovedImage, which overwrites just this prompt's entry
    * in the lesson's `images_no_bg` map) and re-rendering with the new
    * bgRemovedImageUrl - this component uploads the file via uploadImage()
-   * and hands back the hosted URL, the same as onUpload. Only rendered once
-   * hasBgRemovedImage is true, since there's nothing to replace otherwise.
+   * and hands back the hosted URL, the same as onUpload. Also used for the
+   * first upload of a background-removed image, before "Remove background"
+   * has ever produced one - the caller's save simply writes this prompt's
+   * entry in the `images_no_bg` map.
    */
   onReplaceBackgroundImage: (promptId: string, dataUrl: string) => void | Promise<void>;
   /**
@@ -239,7 +241,9 @@ export function ImagePromptCard({
       try {
         const hostedUrl = await uploadToBucket(String(reader.result));
         await onReplaceBackgroundImage(item.id, hostedUrl);
-        toast.success("Background-removed image replaced!");
+        toast.success(
+          hasBgRemovedImage ? "Background-removed image replaced!" : "Background-removed image uploaded!",
+        );
       } catch (err) {
         toast.error(
           err instanceof UploadFailedError
@@ -343,16 +347,20 @@ export function ImagePromptCard({
             <span className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
               Background removed
             </span>
-            {hasBgRemovedImage ? (
-              <button
-                type="button"
-                onClick={handleReplaceBackgroundImageClick}
-                disabled={isReplacingBackgroundImage}
-                className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground underline-offset-2 hover:text-foreground hover:underline disabled:pointer-events-none disabled:opacity-50"
-              >
-                {isReplacingBackgroundImage ? "Replacing..." : "Replace"}
-              </button>
-            ) : null}
+            <button
+              type="button"
+              onClick={handleReplaceBackgroundImageClick}
+              disabled={isReplacingBackgroundImage}
+              className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground underline-offset-2 hover:text-foreground hover:underline disabled:pointer-events-none disabled:opacity-50"
+            >
+              {isReplacingBackgroundImage
+                ? hasBgRemovedImage
+                  ? "Replacing..."
+                  : "Uploading..."
+                : hasBgRemovedImage
+                  ? "Replace"
+                  : "Upload"}
+            </button>
           </div>
 
           <input
@@ -383,8 +391,8 @@ export function ImagePromptCard({
             ) : (
               <span className="font-mono text-xs text-muted-foreground">
                 {hasImage
-                  ? 'No background-removed image yet — click "Remove background" below'
-                  : "Upload an image first to remove its background"}
+                  ? 'No background-removed image yet — upload one here, or click "Remove background" below'
+                  : "No background-removed image yet — upload one here"}
               </span>
             )}
           </div>

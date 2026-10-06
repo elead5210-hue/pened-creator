@@ -63,10 +63,11 @@ function partitionImagePrompts(imagePrompts: unknown[]): {
  *   removeImageBackground(lessonId, promptId) - the server looks up the
  *   already-uploaded source image itself and merges the result into the
  *   lesson's `images_no_bg` map.
- * - On a manual replacement upload for the background-removed image
- *   (used when the automatic result didn't process correctly), persists
- *   via saveBackgroundRemovedImage(lessonId, promptId, dataUrl) - merging
- *   the replacement into the same `images_no_bg` map.
+ * - On a manual upload for the background-removed image - either a
+ *   replacement (when the automatic result didn't process correctly) or
+ *   a first upload made before "Remove background" has ever run -
+ *   persists via saveBackgroundRemovedImage(lessonId, promptId, dataUrl),
+ *   merging it into the same `images_no_bg` map.
  *
  * None of these keep the result only in local component state, so every
  * change survives reloads and is visible across tabs/sessions (db.ts's
