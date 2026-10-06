@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 
 import { SlideDataViewer } from "./SlideDataViewer";
 import type { SlideshowDeck } from "@/lib/curriculum/phase2-content/slideshowDeckValidator";
@@ -64,6 +64,15 @@ vi.mock("./SlideImagesPromptModal", async () => {
   };
 });
 
+const toastMocks = vi.hoisted(() => ({
+  success: vi.fn(),
+  error: vi.fn(),
+}));
+
+vi.mock("sonner", () => ({
+  toast: { success: toastMocks.success, error: toastMocks.error },
+}));
+
 const LESSON = {
   id: "proj-1:node-9",
   project_id: "proj-1",
@@ -94,6 +103,31 @@ function makeDeck(slides: unknown[]) {
     id: "deck-1",
     metadata: { title: "My Deck" },
     slides,
+  };
+}
+
+/** A slide with its text element plus two image elements. */
+function makeSlideWithImages(id: string) {
+  const slide = makeSlide(id);
+  return {
+    ...slide,
+    elements: [
+      ...slide.elements,
+      {
+        id: `${id}-img-1`,
+        type: "image",
+        position: { x: 400, y: 20 },
+        size: { width: 320, height: 240 },
+        src: "plant-cell.png",
+      },
+      {
+        id: `${id}-img-2`,
+        type: "image",
+        position: { x: 400, y: 300 },
+        size: { width: 200, height: 200 },
+        src: "leaf.png",
+      },
+    ],
   };
 }
 
@@ -397,6 +431,121 @@ describe("SlideDataViewer: saving an updated slide", () => {
 
       expectOnSlide(1, 3, "Content for a");
       expect(screen.queryByRole("dialog")).toBeNull();
+    });
+  });
+
+  describe("resetting a slide", () => {
+    beforeEach(() => {
+      toastMocks.success.mockReset();
+      toastMocks.error.mockReset();
+    });
+
+    function openResetDialog() {
+      fireEvent.click(screen.getByRole("button", { name: "Reset slide" }));
+      return screen.getByRole("alertdialog");
+    }
+
+    function confirmReset() {
+      const dialog = openResetDialog();
+      fireEvent.click(within(dialog).getByRole("button", { name: "Reset slide" }));
+    }
+
+    it("asks for confirmation and saves nothing until confirmed", () => {
+      const onSlideUpdated = vi.fn<SaveFn>().mockResolvedValue(undefined);
+      renderViewer(makeDeck([makeSlide("a"), makeSlideWithImages("b")]), onSlideUpdated);
+
+      goToNextSlide();
+      const dialog = openResetDialog();
+
+      expect(dialog).toBeInTheDocument();
+      expect(onSlideUpdated).not.toHaveBeenCalled();
+
+      fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+
+      expect(onSlideUpdated).not.toHaveBeenCalled();
+      expect(toastMocks.success).not.toHaveBeenCalled();
+      expect(toastMocks.error).not.toHaveBeenCalled();
+    });
+
+    it("removes the image elements from the current slide only", async () => {
+      const slides = [makeSlideWithImages("a"), makeSlideWithImages("b"), makeSlideWithImages("c")];
+      const deck = makeDeck(slides);
+      const deckBefore = structuredClone(deck);
+      const onSlideUpdated = vi.fn<SaveFn>().mockResolvedValue(undefined);
+      renderViewer(deck, onSlideUpdated);
+
+      goToNextSlide();
+      confirmReset();
+      await waitFor(() => expect(onSlideUpdated).toHaveBeenCalledTimes(1));
+
+      const savedDeck = onSlideUpdated.mock.calls[0][0];
+      expect(savedDeck.slides).toHaveLength(3);
+      expect(savedDeck.slides[0]).toEqual(slides[0]);
+      expect(savedDeck.slides[2]).toEqual(slides[2]);
+      expect(savedDeck.slides[1].elements).toEqual([makeSlide("b").elements[0]]);
+      // The deck the viewer was given is not changed.
+      expect(deck).toEqual(deckBefore);
+    });
+
+    it("keeps the slide's non-image elements and other fields", async () => {
+      const onSlideUpdated = vi.fn<SaveFn>().mockResolvedValue(undefined);
+      renderViewer(makeDeck([makeSlideWithImages("a")]), onSlideUpdated);
+
+      confirmReset();
+      await waitFor(() => expect(onSlideUpdated).toHaveBeenCalledTimes(1));
+
+      const savedSlide = onSlideUpdated.mock.calls[0][0].slides[0] as unknown as Record<string, unknown>;
+      expect(savedSlide.id).toBe("a");
+      expect(savedSlide.title).toBe("Title a");
+      expect(savedSlide.elements).toEqual(makeSlide("a").elements);
+    });
+
+    it("stays on the same slide and shows no images once the saved deck comes back", async () => {
+      const onSlideUpdated = vi.fn<SaveFn>().mockResolvedValue(undefined);
+      const { setDeck } = renderViewer(
+        makeDeck([makeSlide("a"), makeSlideWithImages("b"), makeSlide("c")]),
+        onSlideUpdated,
+      );
+
+      goToNextSlide();
+      expect(screen.getByText("plant-cell.png")).toBeInTheDocument();
+      confirmReset();
+      await waitFor(() => expect(onSlideUpdated).toHaveBeenCalledTimes(1));
+      setDeck(onSlideUpdated.mock.calls[0][0]);
+
+      expectOnSlide(2, 3, "Content for b");
+      expect(screen.queryByText("plant-cell.png")).toBeNull();
+      expect(screen.queryByText("leaf.png")).toBeNull();
+    });
+
+    it("reports success", async () => {
+      const onSlideUpdated = vi.fn<SaveFn>().mockResolvedValue(undefined);
+      renderViewer(makeDeck([makeSlideWithImages("a")]), onSlideUpdated);
+
+      confirmReset();
+
+      await waitFor(() => expect(toastMocks.success).toHaveBeenCalledTimes(1));
+      expect(toastMocks.error).not.toHaveBeenCalled();
+    });
+
+    it("reports failure with the error and leaves the slide as it was", async () => {
+      const onSlideUpdated = vi.fn<SaveFn>().mockRejectedValue(new Error("Network error"));
+      renderViewer(makeDeck([makeSlide("a"), makeSlideWithImages("b")]), onSlideUpdated);
+
+      goToNextSlide();
+      confirmReset();
+
+      await waitFor(() => expect(toastMocks.error).toHaveBeenCalledTimes(1));
+      expect(toastMocks.error.mock.calls[0][0]).toContain("Network error");
+      expect(toastMocks.success).not.toHaveBeenCalled();
+      expectOnSlide(2, 2, "Content for b");
+      expect(screen.getByText("plant-cell.png")).toBeInTheDocument();
+    });
+
+    it("is not offered without onSlideUpdated", () => {
+      renderViewer(makeDeck([makeSlideWithImages("a")]));
+
+      expect(screen.queryByRole("button", { name: "Reset slide" })).toBeNull();
     });
   });
 

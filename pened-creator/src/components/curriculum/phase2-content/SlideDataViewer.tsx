@@ -1,4 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { clampSlideIndex, extractSlides } from "@/lib/curriculum/phase2-content/slideshowDeckSlides";
 import { replaceSlideInDeck } from "@/lib/curriculum/phase2-content/slideImagesResponse";
@@ -41,6 +53,21 @@ export interface SlideDataViewerProps {
    * omitted, the modal gets no apply handler.
    */
   onSlideUpdated?: (deck: SlideshowDeck) => Promise<void> | void;
+}
+
+/**
+ * Returns a copy of `slide` without its image elements. All other elements
+ * and fields are kept as they are. A slide with no elements array is
+ * returned unchanged.
+ */
+function removeImageElements(slide: SlideData): SlideData {
+  const record = slide as unknown as Record<string, unknown>;
+  if (!Array.isArray(record.elements)) return slide;
+  const remaining = record.elements.filter((element) => {
+    if (element === null || typeof element !== "object") return true;
+    return (element as { type?: unknown }).type !== "image";
+  });
+  return { ...record, elements: remaining } as unknown as SlideData;
 }
 
 /** Copies a JSON-like value with object keys sorted, so key order never matters. */
@@ -102,6 +129,8 @@ export function SlideDataViewer({ slideshowDeck, initialIndex = 0, lesson, onSli
   const addImagesButtonRef = useRef<HTMLButtonElement>(null);
   const wasModalOpenRef = useRef(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
 
   const totalSlides = extracted.totalSlides;
   const currentIndex = clampSlideIndex(requestedIndex, totalSlides);
@@ -212,6 +241,25 @@ export function SlideDataViewer({ slideshowDeck, initialIndex = 0, lesson, onSli
     }
   }
 
+  /**
+   * Removes every image element from `slide` (the slide currently shown) and
+   * saves the deck through the same path as other slide updates. The view
+   * stays on the same slide. Reports success or failure with a toast.
+   */
+  async function handleResetSlide(slide: SlideData): Promise<void> {
+    setIsResetting(true);
+    try {
+      await handleApplySlide(removeImageElements(slide));
+      toast.success("Slide reset. All images were removed from this slide.");
+    } catch (err) {
+      const message = err instanceof Error && err.message ? err.message : "Something went wrong.";
+      toast.error(`Couldn't reset the slide. ${message}`);
+    } finally {
+      setIsResetting(false);
+      setIsResetConfirmOpen(false);
+    }
+  }
+
   if (extracted.status === "empty") {
     return (
       <Card>
@@ -292,6 +340,43 @@ export function SlideDataViewer({ slideshowDeck, initialIndex = 0, lesson, onSli
           addImagesButtonRef={addImagesButtonRef}
         />
       </div>
+
+      {lesson && onSlideUpdated ? (
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={isResetting}
+            onClick={() => setIsResetConfirmOpen(true)}
+          >
+            Reset slide
+          </Button>
+          <AlertDialog open={isResetConfirmOpen} onOpenChange={setIsResetConfirmOpen}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Reset this slide?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This removes every image from slide {current.number} so you can start the image
+                  process over. Other slides and this slide's other elements are not changed.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={isResetting}>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  disabled={isResetting}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    void handleResetSlide(current.data);
+                  }}
+                >
+                  {isResetting ? "Resetting..." : "Reset slide"}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
+      ) : null}
 
       {lesson ? (
         <SlideImagesPromptModal
