@@ -208,8 +208,8 @@ export function GlobalToolbar() {
   }
 
   return (
-    <div className="border-b border-border bg-secondary/40">
-      <div className="relative mx-auto flex max-w-4xl flex-wrap items-center gap-1 px-6 py-1.5">
+    <div className="fixed inset-x-0 top-0 z-50 border-b border-border bg-background">
+      <div className="relative mx-auto flex max-w-4xl flex-wrap items-center gap-1 bg-secondary/40 px-6 py-1.5">
         {/* Pinned to the leftmost edge of the viewport, outside the centered
             max-w container's content flow, so existing nav items don't shift. */}
         <div className="fixed left-2 top-1.5 z-40">

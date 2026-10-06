@@ -92,6 +92,17 @@ describe("GlobalToolbar context menu integration", () => {
     expect(screen.getByText("Tool Registry")).toBeInTheDocument();
   });
 
+  it("keeps the toolbar fixed to the top of the viewport", () => {
+    const { container } = render(<ShellHarness />);
+
+    const toolbarRoot = container.firstElementChild as HTMLElement;
+    expect(toolbarRoot).toHaveClass("fixed");
+    expect(toolbarRoot).toHaveClass("top-0");
+    expect(toolbarRoot).toHaveClass("inset-x-0");
+    expect(toolbarRoot).toHaveClass("z-50");
+    expect(toolbarRoot).toContainElement(screen.getByText("Curriculum Tree"));
+  });
+
   it("shows a single 'Suggest a tool' option when the menu is opened", async () => {
     const user = userEvent.setup();
     render(<ShellHarness />);

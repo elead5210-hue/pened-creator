@@ -152,7 +152,9 @@ function RootComponent() {
         <AuthGate>
           <GlobalToolbar />
           {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-          <Outlet />
+          <div className="pt-14">
+            <Outlet />
+          </div>
         </AuthGate>
         <Toaster />
       </AuthProvider>
