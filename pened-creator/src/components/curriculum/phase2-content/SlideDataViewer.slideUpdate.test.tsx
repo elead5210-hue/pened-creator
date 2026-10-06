@@ -73,6 +73,21 @@ vi.mock("sonner", () => ({
   toast: { success: toastMocks.success, error: toastMocks.error },
 }));
 
+// Stand-in for the pened-tools frame: it shows which tool it was given and the
+// exact data it was asked to render, so tests can check what the preview holds.
+vi.mock("@/components/tools/ToolContentFrame", async () => {
+  const React = await import("react");
+
+  return {
+    ToolContentFrame: (props: { toolId: string; data: unknown }) =>
+      React.createElement(
+        "div",
+        { "data-testid": "mock-tool-frame", "data-tool-id": props.toolId },
+        JSON.stringify(props.data),
+      ),
+  };
+});
+
 const LESSON = {
   id: "proj-1:node-9",
   project_id: "proj-1",
@@ -546,6 +561,127 @@ describe("SlideDataViewer: saving an updated slide", () => {
       renderViewer(makeDeck([makeSlideWithImages("a")]));
 
       expect(screen.queryByRole("button", { name: "Reset slide" })).toBeNull();
+    });
+  });
+
+  describe("the updated slide preview", () => {
+    beforeEach(() => {
+      toastMocks.success.mockReset();
+      toastMocks.error.mockReset();
+    });
+
+    function previewDeck() {
+      const frame = screen.getByTestId("mock-tool-frame");
+      return JSON.parse(frame.textContent ?? "") as {
+        slides: { id: string; elements: { id: string; type: string }[] }[];
+      };
+    }
+
+    it("is not shown before anything has been saved", () => {
+      renderViewer(makeDeck([makeSlide("a"), makeSlide("b")]), vi.fn<SaveFn>().mockResolvedValue(undefined));
+
+      goToNextSlide();
+
+      expect(screen.queryByTestId("slide-preview")).toBeNull();
+      expect(screen.queryByTestId("mock-tool-frame")).toBeNull();
+    });
+
+    it("appears after the updated slide is saved", async () => {
+      const onSlideUpdated = vi.fn<SaveFn>().mockResolvedValue(undefined);
+      renderViewer(makeDeck([makeSlide("a"), makeSlide("b"), makeSlide("c")]), onSlideUpdated);
+
+      goToNextSlide();
+      openModalForSlide(2);
+      await applyInModal();
+
+      await waitFor(() => expect(screen.getByTestId("slide-preview")).toBeInTheDocument());
+      expect(screen.getByTestId("mock-tool-frame")).toBeInTheDocument();
+    });
+
+    it("is shown directly under the slide data", async () => {
+      const onSlideUpdated = vi.fn<SaveFn>().mockResolvedValue(undefined);
+      renderViewer(makeDeck([makeSlide("a"), makeSlide("b"), makeSlide("c")]), onSlideUpdated);
+
+      goToNextSlide();
+      openModalForSlide(2);
+      await applyInModal();
+
+      const preview = await screen.findByTestId("slide-preview");
+      const slideRegion = screen.getByRole("region", { name: /slide 2 of 3/ });
+      expect(slideRegion.compareDocumentPosition(preview) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+
+    it("holds only the edited slide, with its new image", async () => {
+      const onSlideUpdated = vi.fn<SaveFn>().mockResolvedValue(undefined);
+      renderViewer(makeDeck([makeSlide("a"), makeSlide("b"), makeSlide("c")]), onSlideUpdated);
+
+      goToNextSlide();
+      openModalForSlide(2);
+      await applyInModal();
+
+      await screen.findByTestId("mock-tool-frame");
+      const deck = previewDeck();
+      expect(deck.slides).toHaveLength(1);
+      expect(deck.slides[0].id).toBe("b");
+      expect(deck.slides[0].elements.map((element) => element.id)).toEqual(["b-el-1", mocks.imageElement.id]);
+      expect(screen.getByTestId("mock-tool-frame")).not.toHaveTextContent("Content for a");
+      expect(screen.getByTestId("mock-tool-frame")).not.toHaveTextContent("Content for c");
+    });
+
+    it("is not shown when the save fails", async () => {
+      const onSlideUpdated = vi.fn<SaveFn>().mockRejectedValue(new Error("Network error"));
+      renderViewer(makeDeck([makeSlide("a"), makeSlide("b")]), onSlideUpdated);
+
+      goToNextSlide();
+      openModalForSlide(2);
+      await applyInModal();
+
+      expect(screen.queryByTestId("slide-preview")).toBeNull();
+    });
+
+    it("stays when the saved deck comes back", async () => {
+      const onSlideUpdated = vi.fn<SaveFn>().mockResolvedValue(undefined);
+      const { setDeck } = renderViewer(makeDeck([makeSlide("a"), makeSlide("b"), makeSlide("c")]), onSlideUpdated);
+
+      goToNextSlide();
+      openModalForSlide(2);
+      await applyInModal();
+      await screen.findByTestId("slide-preview");
+      setDeck(onSlideUpdated.mock.calls[0][0]);
+
+      expectOnSlide(2, 3, "Content for b");
+      expect(screen.getByTestId("slide-preview")).toBeInTheDocument();
+      expect(previewDeck().slides).toHaveLength(1);
+    });
+
+    it("goes away when a different deck is saved from somewhere else", async () => {
+      const onSlideUpdated = vi.fn<SaveFn>().mockResolvedValue(undefined);
+      const { setDeck } = renderViewer(makeDeck([makeSlide("a"), makeSlide("b"), makeSlide("c")]), onSlideUpdated);
+
+      goToNextSlide();
+      openModalForSlide(2);
+      await applyInModal();
+      await screen.findByTestId("slide-preview");
+
+      setDeck(makeDeck([makeSlide("x"), makeSlide("y"), makeSlide("z")]));
+
+      expect(screen.queryByTestId("slide-preview")).toBeNull();
+    });
+
+    it("shows the slide without images after a reset", async () => {
+      const onSlideUpdated = vi.fn<SaveFn>().mockResolvedValue(undefined);
+      renderViewer(makeDeck([makeSlide("a"), makeSlideWithImages("b")]), onSlideUpdated);
+
+      goToNextSlide();
+      fireEvent.click(screen.getByRole("button", { name: "Reset slide" }));
+      const dialog = screen.getByRole("alertdialog");
+      fireEvent.click(within(dialog).getByRole("button", { name: "Reset slide" }));
+
+      await screen.findByTestId("mock-tool-frame");
+      const deck = previewDeck();
+      expect(deck.slides).toHaveLength(1);
+      expect(deck.slides[0].id).toBe("b");
+      expect(deck.slides[0].elements.map((element) => element.type)).toEqual(["text"]);
     });
   });
 

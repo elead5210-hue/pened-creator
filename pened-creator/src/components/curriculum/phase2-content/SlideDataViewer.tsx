@@ -12,6 +12,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ToolContentFrame } from "@/components/tools/ToolContentFrame";
+import { SLIDESHOW_TOOL_ID } from "@/lib/curriculum/phase2-content/slideshowInteractiveContent";
 import { clampSlideIndex, extractSlides } from "@/lib/curriculum/phase2-content/slideshowDeckSlides";
 import { replaceSlideInDeck } from "@/lib/curriculum/phase2-content/slideImagesResponse";
 import {
@@ -131,6 +133,10 @@ export function SlideDataViewer({ slideshowDeck, initialIndex = 0, lesson, onSli
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
+  // After a slide update is saved, a one-slide deck holding only that slide,
+  // shown in the pened-tools preview under the slide data. Tied to the slide
+  // index it was made for, so it only shows while that slide is displayed.
+  const [savedPreview, setSavedPreview] = useState<{ index: number; deck: SlideshowDeck } | null>(null);
 
   const totalSlides = extracted.totalSlides;
   const currentIndex = clampSlideIndex(requestedIndex, totalSlides);
@@ -181,6 +187,7 @@ export function SlideDataViewer({ slideshowDeck, initialIndex = 0, lesson, onSli
     wasModalOpenRef.current = false;
     setIsModalOpen(false);
     setRequestedIndex(0);
+    setSavedPreview(null);
   }, [deckSignature, slideshowDeck]);
 
   // After the user navigates, move focus to the card region so keyboard and
@@ -231,6 +238,10 @@ export function SlideDataViewer({ slideshowDeck, initialIndex = 0, lesson, onSli
 
     try {
       await onSlideUpdated(updatedDeck);
+      setSavedPreview({
+        index: currentIndex,
+        deck: { ...updatedDeck, slides: [updatedSlide] } as SlideshowDeck,
+      });
     } catch (err) {
       // The save failed, so no deck is coming back; don't let this stale
       // signature hide a later, genuine change.
@@ -340,6 +351,13 @@ export function SlideDataViewer({ slideshowDeck, initialIndex = 0, lesson, onSli
           addImagesButtonRef={addImagesButtonRef}
         />
       </div>
+
+      {savedPreview && savedPreview.index === currentIndex ? (
+        <div className="space-y-1" data-testid="slide-preview">
+          <h3 className="text-xs font-medium">Updated slide preview</h3>
+          <ToolContentFrame toolId={SLIDESHOW_TOOL_ID} data={savedPreview.deck} />
+        </div>
+      ) : null}
 
       {lesson && onSlideUpdated ? (
         <div className="flex items-center gap-2">
